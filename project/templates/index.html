@@ -22,7 +22,7 @@
             <h2>Flight Route Finder</h2>
             <form method="POST">
                 <label for="origin">Origin Airport:</label>
-                <select name="origin" onchange="this.form.submit()">
+                <select name="origin">
                     <option value="">Select Origin</option>
                     {% for code, name in all_airports %}
                         <option value="{{ code }}" {% if code == selected_origin %}selected{% endif %}>{{ name }}</option>
@@ -32,7 +32,7 @@
                 <label for="destination">Destination Airport:</label>
                 <select name="destination">
                     <option value="">Select Destination</option>
-                    {% for code, name in destination_options %}
+                    {% for code, name in all_airports %}
                         <option value="{{ code }}" {% if code == selected_destination %}selected{% endif %}>{{ name }}</option>
                     {% endfor %}
                 </select>
