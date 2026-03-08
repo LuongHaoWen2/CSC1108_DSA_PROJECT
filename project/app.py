@@ -5,37 +5,22 @@ app = Flask(__name__)
 
 @app.route("/")
 def index():
-    # Create a basic Folium map
+    # Placeholder map
     m = folium.Map(location=[20, 0], zoom_start=2)
-
-    # Example markers
-    folium.Marker([51.5074, -0.1278], popup="London").add_to(m)
-    folium.Marker([40.7128, -74.0060], popup="New York").add_to(m)
-    folium.Marker([-33.8688, 151.2093], popup="Sydney").add_to(m)
-
-    # Render map as HTML
     map_html = m._repr_html_()
 
-    # HTML template with 2-column layout
-    html_template = """
+    # HTML template with two columns
+    html = """
     <html>
     <head>
-        <title>Airline Map</title>
+        <title>Airline Routes</title>
         <style>
-            body { margin:0; padding:0; font-family: Arial, sans-serif; }
-            .container {
-                display: flex;
-                height: 100vh;
-            }
-            .map {
-                flex: 2; /* left column (map) takes 2/3 width */
-            }
-            .controls {
-                flex: 1; /* right column takes 1/3 width */
-                padding: 20px;
-                box-sizing: border-box;
-                background-color: #f2f2f2;
-            }
+            body { margin:0; font-family: Arial; }
+            .container { display: flex; height: 100vh; }
+            .map { flex: 2; }
+            .controls { flex: 1; padding: 20px; background: #f2f2f2; overflow-y: auto; }
+            label { display: block; margin-top: 15px; }
+            select, input, button { width: 100%; padding: 8px; margin-top: 5px; }
         </style>
     </head>
     <body>
@@ -44,22 +29,34 @@ def index():
                 {{ map_html|safe }}
             </div>
             <div class="controls">
-                <h2>Controls</h2>
-                <label for="country">Select Country:</label>
-                <select id="country">
-                    <option value="UK">United Kingdom</option>
-                    <option value="US">United States</option>
-                    <option value="AU">Australia</option>
+                <h2>Flight Route Finder</h2>
+                <label for="origin">Origin Airport:</label>
+                <select id="origin">
+                    <option value="">Select Origin</option>
+                    <option value="JFK">JFK</option>
+                    <option value="LHR">LHR</option>
+                    <option value="SIN">SIN</option>
                 </select>
-                <br><br>
-                <button onclick="alert('Button clicked!')">Do Something</button>
+
+                <label for="destination">Destination Airport:</label>
+                <select id="destination">
+                    <option value="">Select Destination</option>
+                    <option value="JFK">JFK</option>
+                    <option value="LHR">LHR</option>
+                    <option value="SIN">SIN</option>
+                </select>
+
+                <label for="max_stops">Max Stops (optional):</label>
+                <input type="number" id="max_stops" placeholder="e.g., 2">
+
+                <button onclick="alert('Button clicked!')">Find Shortest Route</button>
             </div>
         </div>
     </body>
     </html>
     """
 
-    return render_template_string(html_template, map_html=map_html)
+    return render_template_string(html, map_html=map_html)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
