@@ -1,23 +1,28 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html>
 <head>
-    <title>Minimal Flask Website</title>
+    <title>Flight Route Finder</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
     <div class="container">
+        <!-- Map Section -->
         <div class="map">
             {{ map_html|safe }}
         </div>
+
+        <!-- Controls Section -->
         <div class="controls">
-            <form method="POST">
+            <h2>Flight Route Finder</h2>
+            <form method="POST" id="route-form">
+                <!-- Origin -->
                 <label for="origin">Origin Airport:</label>
-                <select name="origin" onchange="this.form.submit()">
+                <select name="origin" id="origin" onchange="this.form.submit()">
                     <option value="">Select Origin</option>
                     {% for code, name in all_airports %}
                         <option value="{{ code }}" {% if code == selected_origin %}selected{% endif %}>{{ name }}</option>
                     {% endfor %}
                 </select>
-            
 
                 <!-- Destination -->
                 <label for="destination">Destination Airport:</label>
@@ -29,12 +34,12 @@
                 </select>
 
                 <!-- Carrier -->
-                <label for="destination">Select Carrier:</label>
-                 <select name="carrier">
+                <label for="carrier">Select Carrier:</label>
+                <select name="carrier">
                     <option value="">Select Carrier</option>
-                        {% for iata, name in carrier_options %}
-                            <option value="{{ iata }}" {% if iata == selected_carrier %}selected{% endif %}>{{ name }}</option>
-                        {% endfor %}
+                    {% for iata, name in carrier_options %}
+                        <option value="{{ iata }}" {% if iata == selected_carrier %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
                 </select>
 
                 <!-- Route Preference -->
@@ -53,6 +58,7 @@
                 <button type="submit">Find Route</button>
             </form>
 
+            <!-- Route Results -->
             {% if route_info %}
                 <div class="results">
                     <h3>Route Info:</h3>
@@ -61,8 +67,5 @@
             {% endif %}
         </div>
     </div>
-
-    
-    
 </body>
 </html>
