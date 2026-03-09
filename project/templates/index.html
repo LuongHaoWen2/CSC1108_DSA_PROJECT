@@ -2,6 +2,16 @@
 <html>
 <head>
     <title>Flight Route Finder</title>
+
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+    <!-- jQuery (Select2 dependency) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
     <style>
         body { margin:0; font-family: Arial, sans-serif; }
         .container { display: flex; height: 100vh; }
@@ -11,6 +21,7 @@
         select, input, button { width: 100%; padding: 8px; margin-top: 5px; }
         h2 { margin-top: 0; }
         .results { margin-top: 20px; background: #fff; padding: 10px; border-radius: 5px; }
+        ul { padding-left: 20px; }
     </style>
 </head>
 <body>
@@ -19,10 +30,10 @@
             {{ map_html|safe }}
         </div>
         <div class="controls">
-            <h2>Flight Route Finder</h2>
+            <h2>Flight Route Map Directory</h2>
             <form method="POST">
                 <label for="origin">Origin Airport:</label>
-                <select name="origin">
+                <select name="origin" class="searchable">
                     <option value="">Select Origin</option>
                     {% for code, name in all_airports %}
                         <option value="{{ code }}" {% if code == selected_origin %}selected{% endif %}>{{ name }}</option>
@@ -30,7 +41,7 @@
                 </select>
 
                 <label for="destination">Destination Airport:</label>
-                <select name="destination">
+                <select name="destination" class="searchable">
                     <option value="">Select Destination</option>
                     {% for code, name in all_airports %}
                         <option value="{{ code }}" {% if code == selected_destination %}selected{% endif %}>{{ name }}</option>
@@ -46,7 +57,7 @@
                 </select>
 
                 <label for="max_stops">Max Stops (optional):</label>
-                <input type="number" name="max_stops" placeholder="e.g., 2">
+                <input type="number" name="max_stops" value="{{ max_stops }}" min="1" max="4">
 
                 <button type="submit">Find Route</button>
             </form>
@@ -55,9 +66,28 @@
                 <div class="results">
                     <h3>Route Info:</h3>
                     <p>{{ route_info }}</p>
+
+                    {% if all_routes %}
+                        <h4>All Routes:</h4>
+                        <ul>
+                            {% for route in all_routes %}
+                                <li>{{ route | join(" → ") }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
                 </div>
             {% endif %}
         </div>
     </div>
+
+    <!-- Initialize Select2 for searchable dropdowns -->
+    <script>
+    $(document).ready(function() {
+        $('.searchable').select2({
+            placeholder: "Type to search",
+            width: '100%'
+        });
+    });
+    </script>
 </body>
 </html>
