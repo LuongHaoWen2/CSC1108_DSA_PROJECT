@@ -9,7 +9,7 @@ def find_routes(graph, start, end, max_stops):
     while stack:
         current, path = stack.pop()
 
-        # If we reached the destination, save the path
+        # If reached the destination, save the path
         if current == end:
             routes.append(path)
             continue
