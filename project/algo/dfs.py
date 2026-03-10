@@ -1,8 +1,7 @@
 def find_routes(graph, start, end, max_stops):
-    """
-    Iterative DFS to find all routes from start to end up to max_stops.
-    Returns a list of paths (each path is a list of airport codes).
-    """
+    #Iterative DFS to find all routes from start to end up to max_stops.
+    #eturns a list of paths (each path is a list of airport codes).
+    
     stack = [(start, [start])]  # stack of tuples: (current_airport, path_so_far)
     routes = []
 

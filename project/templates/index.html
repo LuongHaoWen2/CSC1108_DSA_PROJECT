@@ -6,7 +6,7 @@
     <!-- Select2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
-    <!-- jQuery (Select2 dependency) -->
+    <!-- jQuery (Select2 + AJAX dependency) -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
     <!-- Select2 JS -->
@@ -22,6 +22,7 @@
         h2 { margin-top: 0; }
         .results { margin-top: 20px; background: #fff; padding: 10px; border-radius: 5px; }
         ul { padding-left: 20px; }
+        .route-btn { margin-bottom: 5px; width: 100%; text-align: left; }
     </style>
 </head>
 <body>
@@ -31,7 +32,7 @@
         </div>
         <div class="controls">
             <h2>Flight Route Map Directory</h2>
-            <form method="POST">
+            <form method="POST" id="searchForm">
                 <label for="origin">Origin Airport:</label>
                 <select name="origin" class="searchable">
                     <option value="">Select Origin</option>
@@ -71,7 +72,15 @@
                         <h4>All Routes:</h4>
                         <ul>
                             {% for route in all_routes %}
-                                <li>{{ route | join(" → ") }}</li>
+                                <li>
+                                    <button class="route-btn" 
+                                            data-index="{{ loop.index0 }}"
+                                            data-origin="{{ selected_origin }}"
+                                            data-destination="{{ selected_destination }}"
+                                            data-max-stops="{{ max_stops }}">
+                                        {{ route | join(" → ") }}
+                                    </button>
+                                </li>
                             {% endfor %}
                         </ul>
                     {% endif %}
@@ -80,12 +89,36 @@
         </div>
     </div>
 
-    <!-- Initialize Select2 for searchable dropdowns -->
+    <!-- Initialize Select2 and AJAX for clickable routes -->
     <script>
     $(document).ready(function() {
+        // Make dropdowns searchable
         $('.searchable').select2({
             placeholder: "Type to search",
             width: '100%'
+        });
+
+        // AJAX for clickable route buttons
+        $('.route-btn').click(function() {
+            let index = $(this).data('index');
+            let origin = $(this).data('origin');
+            let destination = $(this).data('destination');
+            let max_stops = $(this).data('max-stops');
+
+            $.ajax({
+                url: '/update_map',
+                type: 'POST',
+                data: {
+                    route_index: index,
+                    origin: origin,
+                    destination: destination,
+                    max_stops: max_stops
+                },
+                success: function(response) {
+                    // Replace map div with new map HTML
+                    $('.map').html(response.map_html);
+                }
+            });
         });
     });
     </script>
