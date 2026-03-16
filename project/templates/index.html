@@ -60,6 +60,13 @@
 
                 <label for="max_stops">Max Stops (optional):</label>
                 <input type="number" name="max_stops" value="{{ max_stops }}" min="1" max="4">
+                <label for="avoid_airport">Avoid Airport (optional):</label>
+                <select name="avoid_airport" class="searchable">
+                    <option value="">None</option>
+                    {% for code, name in all_airports %}
+                        <option value="{{ code }}">{{ name }}</option>
+                    {% endfor %}
+                </select>
 
                 <button type="submit">Find Route</button>
             </form>

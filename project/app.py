@@ -31,17 +31,19 @@ def index():
     route_info = None
     max_stops = 2
     all_routes = []
+    avoid_airport=None
 
     if request.method == "POST":
         selected_origin = request.form.get("origin")
         selected_destination = request.form.get("destination")
         route_preference = request.form.get("preference")
         max_stops = int(request.form.get("max_stops") or 2)
+        avoid_airport = request.form.get("avoid_airport")
 
         # Call DFS to find all routes up to max_stops
         if selected_origin and selected_destination:
             if route_preference == "dfs":
-                all_routes = find_routes(air_graph, selected_origin, selected_destination, max_stops)
+                all_routes = find_routes(air_graph, selected_origin, selected_destination, max_stops, avoid_airport)
                 route_info = f"Found {len(all_routes)} route(s) from {selected_origin} to {selected_destination} with max {max_stops} stops."
         
         # Call Dijkstra Algorithm to find the single optimal route
@@ -56,13 +58,13 @@ def index():
                     elif route_preference == "price":
                         route_info = f"Optimal route for price: ${total}"
                     elif route_preference == "time":
-                        route_info = f"Optimal route for fasest time: {total} minutes"
+                        route_info = f"Optimal route for fastest time: {total} minutes"
                 else:
                     route_info = "No route found."
         
         # Call BFS to find the route with the fewest connections/layovers
             elif route_preference == "fewest_hops":
-                path = find_fewest_layovers(air_graph, selected_origin, selected_destination)
+                path = find_fewest_layovers(air_graph, selected_origin, selected_destination, avoid_airport)
                 all_routes = [path] if path else []
                 route_info = f"Route with fewest layovers found." if path else "No route found."
 
@@ -123,8 +125,11 @@ def update_map():
     selected_destination = request.form.get("destination")
     max_stops = int(request.form.get("max_stops", 2))
     selected_route = int(request.form.get("route_index", 0))
+    avoid_airport = request.form.get("avoid_airport")
 
     all_routes = find_routes(air_graph, selected_origin, selected_destination, max_stops)
+    if avoid_airport:
+        all_routes = [r for r in all_routes if avoid_airport not in r]
 
     if all_routes and 0 <= selected_route < len(all_routes):
         route = all_routes[selected_route]

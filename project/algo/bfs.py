@@ -1,5 +1,5 @@
 from collections import deque
-def find_fewest_layovers(graph, start_code, end_code):
+def find_fewest_layovers(graph, start_code, end_code, avoid_airport=None):
     """
     Finds the route with the fewest connections using Breadth-First Search (BFS).
     """
@@ -29,7 +29,10 @@ def find_fewest_layovers(graph, start_code, end_code):
         
         # We only care about the keys (neighbor codes) here, not the weights (details)
         for neighbor in current_airport_obj.connections:
+            if avoid_airport and neighbor == avoid_airport:
+                continue   #avoid airport    
             if neighbor not in visited:
+                        
                 # Mark as visited the moment we see it to prevent duplicate work
                 visited.add(neighbor)
                 
