@@ -1,6 +1,10 @@
 import heapq
 from collections import deque
 
+"""
+Find the best route by distance, cost, or time
+
+"""
 def find_lowest_path(graph, start_code, end_code, weight_type='distance'):
     # Finds optimal path between two airports using Dijkstra's algorithm
     # weight_type can be 'distance', 'price', or 'time'

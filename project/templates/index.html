@@ -51,11 +51,11 @@
 
                 <label for="preference">Route Preference:</label>
                 <select name="preference">
-                    <option value="dfs">DFS (all routes)</option>
-                    <option value="distance">Shortest Distance</option>
-                    <option value="price">Lowest Cost</option>
-                    <option value="time">Fastest Time</option>
-                    <option value="fewest_hops">Fewest Layovers</option>
+                    <option value="dfs" {% if route_preference == "dfs" %}selected{% endif %}>DFS (all routes)</option>
+                    <option value="distance" {% if route_preference == "distance" %}selected{% endif %}>Shortest Distance</option>
+                    <option value="price" {% if route_preference == "price" %}selected{% endif %}>Lowest Cost</option>
+                    <option value="time" {% if route_preference == "time" %}selected{% endif %}>Fastest Time</option>
+                    <option value="fewest_hops" {% if route_preference == "fewest_hops" %}selected{% endif %}>Fewest Layovers</option>
                 </select>
 
                 <label for="max_stops">Max Stops (optional):</label>

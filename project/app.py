@@ -44,11 +44,23 @@ def index():
                 all_routes = find_routes(air_graph, selected_origin, selected_destination, max_stops)
                 route_info = f"Found {len(all_routes)} route(s) from {selected_origin} to {selected_destination} with max {max_stops} stops."
         
+        # Call Dijkstra Algorithm to find the single optimal route
+        # weight_type decides what the algorithm optimizes for
+        # "distance", "price", "time"
             elif route_preference in ["distance", "price", "time"]:
                 path, total = find_lowest_path(air_graph, selected_origin, selected_destination, weight_type=route_preference)
                 all_routes = [path] if path else []
-                route_info = f"Optimal route for {route_preference}: {total}" if path else "No route found."
+                if path:
+                    if route_preference == "distance":
+                        route_info = f"Optimal route for distance: {total} km"
+                    elif route_preference == "price":
+                        route_info = f"Optimal route for price: ${total}"
+                    elif route_preference == "time":
+                        route_info = f"Optimal route for fasest time: {total} minutes"
+                else:
+                    route_info = "No route found."
         
+        # Call BFS to find the route with the fewest connections/layovers
             elif route_preference == "fewest_hops":
                 path = find_fewest_layovers(air_graph, selected_origin, selected_destination)
                 all_routes = [path] if path else []
