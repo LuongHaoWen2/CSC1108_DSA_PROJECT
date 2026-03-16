@@ -1,8 +1,11 @@
 from flask import Flask, render_template, request
 import folium
 import json
-from graph import graph        # graph adjacency list
+
+from graphalgo import FlightGraph, load_flight_data
 from algo.dfs import find_routes    # DFS function
+from algo.dijkstra import find_lowest_path # Dijkstra function
+from algo.bfs import find_fewest_layovers # BFS function
 
 app = Flask(__name__)
 
@@ -10,8 +13,15 @@ app = Flask(__name__)
 with open("data/airline_routes.json") as f:
     data = json.load(f)
 
-# List of all airports for dropdowns
-all_airports = [(code, info["display_name"]) for code, info in data.items()]
+# Initialize FlightGraph and load data into it
+air_graph = FlightGraph()
+load_flight_data(air_graph, "data/airline_routes.json")
+
+# List of all airports for dropdowns (sorted by display_name)
+all_airports = sorted(
+    [(code, info["display_name"]) for code, info in data.items()],
+    key=lambda x: x[1]  # sort alphabetically by airport name
+)
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -28,21 +38,31 @@ def index():
         route_preference = request.form.get("preference")
         max_stops = int(request.form.get("max_stops") or 2)
 
-        # Call Depth First Search to find all routes up to max_stops
+        # Call DFS to find all routes up to max_stops
         if selected_origin and selected_destination:
-            all_routes = find_routes(graph, selected_origin, selected_destination, max_stops)
-            if all_routes:
+            if route_preference == "dfs":
+                all_routes = find_routes(air_graph, selected_origin, selected_destination, max_stops)
                 route_info = f"Found {len(all_routes)} route(s) from {selected_origin} to {selected_destination} with max {max_stops} stops."
-            else:
-                route_info = f"No routes found from {selected_origin} to {selected_destination} with max {max_stops} stops."
+        
+            elif route_preference in ["distance", "price", "time"]:
+                path, total = find_lowest_path(air_graph, selected_origin, selected_destination, weight_type=route_preference)
+                all_routes = [path] if path else []
+                route_info = f"Optimal route for {route_preference}: {total}" if path else "No route found."
+        
+            elif route_preference == "fewest_hops":
+                path = find_fewest_layovers(air_graph, selected_origin, selected_destination)
+                all_routes = [path] if path else []
+                route_info = f"Route with fewest layovers found." if path else "No route found."
+
+      
+        
 
     # Folium map
     m = folium.Map(location=[20, 0], zoom_start=2)
 
     # Show first route on map (default)
     if all_routes:
-        route = all_routes[0]  # display first route
-        # Add markers with stop order
+        route = all_routes[0]
         for i in range(len(route)):
             airport = data[route[i]]
             lat, lon = float(airport["latitude"]), float(airport["longitude"])
@@ -55,8 +75,7 @@ def index():
                 popup_text = f"{airport['display_name']} (Destination)"
             else:
                 color = "blue"
-                # Stop number starts at 1 for first transfer
-                stop_number = i  # i=1 is first transfer
+                stop_number = i
                 popup_text = f"{airport['display_name']} (Stop {stop_number})"
 
             folium.Marker(
@@ -65,7 +84,6 @@ def index():
                 icon=folium.Icon(color=color)
             ).add_to(m)
 
-        # Draw lines between airports
         for i in range(len(route)-1):
             o = data[route[i]]
             d = data[route[i+1]]
@@ -94,13 +112,10 @@ def update_map():
     max_stops = int(request.form.get("max_stops", 2))
     selected_route = int(request.form.get("route_index", 0))
 
-    # Generate all routes using DFS
-    all_routes = find_routes(graph, selected_origin, selected_destination, max_stops)
+    all_routes = find_routes(air_graph, selected_origin, selected_destination, max_stops)
 
     if all_routes and 0 <= selected_route < len(all_routes):
         route = all_routes[selected_route]
-
-        # Create map for this route
         m = folium.Map(location=[20, 0], zoom_start=2)
 
         for i in range(len(route)):
@@ -115,8 +130,7 @@ def update_map():
                 popup_text = f"{airport['display_name']} (Destination)"
             else:
                 color = "blue"
-                # Stop number starts at 1 for first transfer
-                stop_number = i  # i=1 is first transfer
+                stop_number = i
                 popup_text = f"{airport['display_name']} (Stop {stop_number})"
 
             folium.Marker(
@@ -125,7 +139,6 @@ def update_map():
                 icon=folium.Icon(color=color)
             ).add_to(m)
 
-        # Draw lines between airports
         for i in range(len(route)-1):
             o = data[route[i]]
             d = data[route[i+1]]
