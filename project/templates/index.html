@@ -112,6 +112,10 @@
             let origin = $(this).data('origin');
             let destination = $(this).data('destination');
             let max_stops = $(this).data('max-stops');
+            
+            // --- NEW: Grab the current preference and avoid_airport from the dropdowns ---
+            let preference = $('select[name="preference"]').val();
+            let avoid_airport = $('select[name="avoid_airport"]').val();
 
             $.ajax({
                 url: '/update_map',
@@ -120,7 +124,9 @@
                     route_index: index,
                     origin: origin,
                     destination: destination,
-                    max_stops: max_stops
+                    max_stops: max_stops,
+                    preference: preference,           // <-- Send to server
+                    avoid_airport: avoid_airport      // <-- Send to server
                 },
                 success: function(response) {
                     // Replace map div with new map HTML

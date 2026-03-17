@@ -23,6 +23,56 @@ all_airports = sorted(
     key=lambda x: x[1]  # sort alphabetically by airport name
 )
 
+# Helper function for drawing map
+def generate_folium_map(route, data):
+    """Helper function to draw the Folium map for a given route."""
+    m = folium.Map(location=[20, 0], zoom_start=2)
+    
+    if not route:
+        return m
+
+    # --- Draw Markers ---
+    for i in range(len(route)):
+        current_node = route[i]
+        airport_code = current_node[0] if isinstance(current_node, tuple) else current_node
+        
+        airport = data[airport_code]
+        lat, lon = float(airport["latitude"]), float(airport["longitude"])
+
+        if i == 0:
+            color = "green"
+            popup_text = f"{airport['display_name']} (Origin)"
+        elif i == len(route) - 1:
+            color = "red"
+            popup_text = f"{airport['display_name']} (Destination)"
+        else:
+            color = "blue"
+            stop_number = i
+            popup_text = f"{airport['display_name']} (Stop {stop_number})"
+
+        folium.Marker(
+            [lat, lon],
+            popup=popup_text,
+            icon=folium.Icon(color=color)
+        ).add_to(m)
+
+    # --- Draw Lines ---
+    for i in range(len(route)-1):
+        node_origin = route[i]
+        node_dest = route[i+1]
+        
+        code_origin = node_origin[0] if isinstance(node_origin, tuple) else node_origin
+        code_dest = node_dest[0] if isinstance(node_dest, tuple) else node_dest
+
+        o = data[code_origin]
+        d = data[code_dest]
+        
+        lat1, lon1 = float(o["latitude"]), float(o["longitude"])
+        lat2, lon2 = float(d["latitude"]), float(d["longitude"])
+        folium.PolyLine([[lat1, lon1], [lat2, lon2]], color="blue", weight=4, opacity=0.7).add_to(m)
+
+    return m
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     selected_origin = None
@@ -77,46 +127,11 @@ def index():
     # Show first route on map (default)
     if all_routes:
         route = all_routes[0]
-        for i in range(len(route)):
-            # If its tuple from Dijkstra, grab 0th index
-            # else if its string from BFS, just use it
-            current_node = route[i]
-            airport_code = current_node[0] if isinstance(current_node, tuple) else current_node
-
-            # Search in JSON
-            airport = data[airport_code]
-
-            lat, lon = float(airport["latitude"]), float(airport["longitude"])
-
-            if i == 0:
-                color = "green"
-                popup_text = f"{airport['display_name']} (Origin)"
-            elif i == len(route) - 1:
-                color = "red"
-                popup_text = f"{airport['display_name']} (Destination)"
-            else:
-                color = "blue"
-                stop_number = i
-                popup_text = f"{airport['display_name']} (Stop {stop_number})"
-
-            folium.Marker(
-                [lat, lon],
-                popup=popup_text,
-                icon=folium.Icon(color=color)
-            ).add_to(m)
-
-        for i in range(len(route)-1):
-            node_origin = route[i]
-            node_dest = route[i+1]
-            code_origin = node_origin[0] if isinstance(node_origin, tuple) else node_origin
-            code_dest = node_dest[0] if isinstance(node_dest, tuple) else node_dest
-
-            o = data[code_origin]
-            d = data[code_dest]
-            lat1, lon1 = float(o["latitude"]), float(o["longitude"])
-            lat2, lon2 = float(d["latitude"]), float(d["longitude"])
-            folium.PolyLine([[lat1, lon1], [lat2, lon2]], color="blue", weight=4, opacity=0.7).add_to(m)
-
+        m = generate_folium_map(route, data) 
+    else:
+        # If there are no routes, just show a blank world map
+        m = folium.Map(location=[20, 0], zoom_start=2)
+    
     map_html = m._repr_html_()
 
     return render_template(
@@ -138,54 +153,30 @@ def update_map():
     max_stops = int(request.form.get("max_stops", 2))
     selected_route = int(request.form.get("route_index", 0))
     avoid_airport = request.form.get("avoid_airport")
+    
+    # To know which algorithm the user is currently using
+    route_preference = request.form.get("preference") 
 
-    all_routes = find_routes(air_graph, selected_origin, selected_destination, max_stops)
-    if avoid_airport:
-        all_routes = [r for r in all_routes if avoid_airport not in r]
+    all_routes = []
+
+    # With respects the chosen algorithm 
+    if selected_origin and selected_destination:
+        if route_preference == "dfs":
+            all_routes = find_routes(air_graph, selected_origin, selected_destination, max_stops)
+            if avoid_airport:
+                all_routes = [r for r in all_routes if avoid_airport not in r]
+
+        elif route_preference in ["distance", "price", "time"]:
+            path, total = find_lowest_path(air_graph, selected_origin, selected_destination, weight_type=route_preference)
+            all_routes = [path] if path else []
+
+        elif route_preference == "fewest_hops":
+            path = find_fewest_layovers(air_graph, selected_origin, selected_destination, avoid_airport)
+            all_routes = [path] if path else []
 
     if all_routes and 0 <= selected_route < len(all_routes):
         route = all_routes[selected_route]
-        m = folium.Map(location=[20, 0], zoom_start=2)
-
-        for i in range(len(route)):
-            # Check if it's a tuple (from Dijkstra/BFS) or string (from DFS)
-            current_node = route[i]
-            airport_code = current_node[0] if isinstance(current_node, tuple) else current_node
-            
-            airport = data[airport_code]
-            lat, lon = float(airport["latitude"]), float(airport["longitude"])
-
-            if i == 0:
-                color = "green"
-                popup_text = f"{airport['display_name']} (Origin)"
-            elif i == len(route) - 1:
-                color = "red"
-                popup_text = f"{airport['display_name']} (Destination)"
-            else:
-                color = "blue"
-                stop_number = i
-                popup_text = f"{airport['display_name']} (Stop {stop_number})"
-
-            folium.Marker(
-                [lat, lon],
-                popup=popup_text,
-                icon=folium.Icon(color=color)
-            ).add_to(m)
-
-        for i in range(len(route)-1):
-            # Apply the same tuple/string check for the connecting lines
-            node_origin = route[i]
-            node_dest = route[i+1]
-            
-            code_origin = node_origin[0] if isinstance(node_origin, tuple) else node_origin
-            code_dest = node_dest[0] if isinstance(node_dest, tuple) else node_dest
-
-            o = data[code_origin]
-            d = data[code_dest]
-            
-            lat1, lon1 = float(o["latitude"]), float(o["longitude"])
-            lat2, lon2 = float(d["latitude"]), float(d["longitude"])
-            folium.PolyLine([[lat1, lon1], [lat2, lon2]], color="blue", weight=4, opacity=0.7).add_to(m)
+        m = generate_folium_map(route, data)
 
         map_html = m._repr_html_()
         return {"map_html": map_html}
