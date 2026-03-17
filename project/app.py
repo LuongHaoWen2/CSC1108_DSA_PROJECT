@@ -78,7 +78,14 @@ def index():
     if all_routes:
         route = all_routes[0]
         for i in range(len(route)):
-            airport = data[route[i]]
+            # If its tuple from Dijkstra, grab 0th index
+            # else if its string from BFS, just use it
+            current_node = route[i]
+            airport_code = current_node[0] if isinstance(current_node, tuple) else current_node
+
+            # Search in JSON
+            airport = data[airport_code]
+
             lat, lon = float(airport["latitude"]), float(airport["longitude"])
 
             if i == 0:
@@ -99,8 +106,13 @@ def index():
             ).add_to(m)
 
         for i in range(len(route)-1):
-            o = data[route[i]]
-            d = data[route[i+1]]
+            node_origin = route[i]
+            node_dest = route[i+1]
+            code_origin = node_origin[0] if isinstance(node_origin, tuple) else node_origin
+            code_dest = node_dest[0] if isinstance(node_dest, tuple) else node_dest
+
+            o = data[code_origin]
+            d = data[code_dest]
             lat1, lon1 = float(o["latitude"]), float(o["longitude"])
             lat2, lon2 = float(d["latitude"]), float(d["longitude"])
             folium.PolyLine([[lat1, lon1], [lat2, lon2]], color="blue", weight=4, opacity=0.7).add_to(m)
@@ -136,7 +148,11 @@ def update_map():
         m = folium.Map(location=[20, 0], zoom_start=2)
 
         for i in range(len(route)):
-            airport = data[route[i]]
+            # Check if it's a tuple (from Dijkstra/BFS) or string (from DFS)
+            current_node = route[i]
+            airport_code = current_node[0] if isinstance(current_node, tuple) else current_node
+            
+            airport = data[airport_code]
             lat, lon = float(airport["latitude"]), float(airport["longitude"])
 
             if i == 0:
@@ -157,8 +173,16 @@ def update_map():
             ).add_to(m)
 
         for i in range(len(route)-1):
-            o = data[route[i]]
-            d = data[route[i+1]]
+            # Apply the same tuple/string check for the connecting lines
+            node_origin = route[i]
+            node_dest = route[i+1]
+            
+            code_origin = node_origin[0] if isinstance(node_origin, tuple) else node_origin
+            code_dest = node_dest[0] if isinstance(node_dest, tuple) else node_dest
+
+            o = data[code_origin]
+            d = data[code_dest]
+            
             lat1, lon1 = float(o["latitude"]), float(o["longitude"])
             lat2, lon2 = float(d["latitude"]), float(d["longitude"])
             folium.PolyLine([[lat1, lon1], [lat2, lon2]], color="blue", weight=4, opacity=0.7).add_to(m)
