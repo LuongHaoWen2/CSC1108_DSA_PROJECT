@@ -23,6 +23,7 @@
         .results { margin-top: 20px; background: #fff; padding: 10px; border-radius: 5px; }
         ul { padding-left: 20px; }
         .route-btn { margin-bottom: 5px; width: 100%; text-align: left; }
+        #route-summary { margin-top:20px; padding:10px; background:#ffffff; border-radius:5px; }
     </style>
 </head>
 <body>
@@ -94,6 +95,12 @@
                     {% endif %}
                 </div>
             {% endif %}
+
+            <!-- ✅ SUMMARY PANEL -->
+            <div id="route-summary">
+                <h3>Route Summary</h3>
+                <p>Select a route to see details</p>
+            </div>
         </div>
     </div>
 
@@ -112,8 +119,8 @@
             let origin = $(this).data('origin');
             let destination = $(this).data('destination');
             let max_stops = $(this).data('max-stops');
-            
-            // --- NEW: Grab the current preference and avoid_airport from the dropdowns ---
+
+            // Grab current preference and avoid_airport
             let preference = $('select[name="preference"]').val();
             let avoid_airport = $('select[name="avoid_airport"]').val();
 
@@ -125,12 +132,37 @@
                     origin: origin,
                     destination: destination,
                     max_stops: max_stops,
-                    preference: preference,           // <-- Send to server
-                    avoid_airport: avoid_airport      // <-- Send to server
+                    preference: preference,
+                    avoid_airport: avoid_airport
                 },
                 success: function(response) {
-                    // Replace map div with new map HTML
+                    // Update map
                     $('.map').html(response.map_html);
+
+                    // ✅ Update summary panel
+                    if (response.summary) {  // fix typo here
+                        let summaryDiv = document.getElementById("route-summary");
+
+                        let html = `
+                            <h3>Route Summary</h3>
+                            <p><b>Total Distance:</b> ${response.summary.total_distance} km</p>
+                            <p><b>Total Price:</b> $${response.summary.total_price}</p>
+                            <p><b>Total Time:</b> ${response.summary.total_time} min</p>
+                            <hr>
+                        `;
+
+                        response.summary.segments.forEach(seg => {
+                            html += `
+                                <p>
+                                ${seg.from} → ${seg.to}<br>
+                                Airline: ${seg.airline}<br>
+                                ${seg.distance} km | $${seg.price} | ${seg.time} min
+                                </p>
+                            `;
+                        });
+
+                        summaryDiv.innerHTML = html;
+                    }
                 }
             });
         });

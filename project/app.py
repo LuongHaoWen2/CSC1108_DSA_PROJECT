@@ -73,6 +73,54 @@ def generate_folium_map(route, data):
 
     return m
 
+def build_route_summary(route, graph, weight_type=None):
+    summary = {
+        "segments": [],
+        "total_distance": 0,
+        "total_price": 0,
+        "total_time": 0
+    }
+
+    # Loop through each flight segment
+    for i in range(len(route) - 1):
+        current = route[i]
+        next_node = route[i + 1]
+
+        # Handle tuple (Dijkstra) vs string (DFS/BFS)
+        origin = current[0] if isinstance(current, tuple) else current
+        destination = next_node[0] if isinstance(next_node, tuple) else next_node
+
+        airline = next_node[1] if isinstance(next_node, tuple) else "Unknown"
+
+        # Get flight details from graph
+        flights = graph.airports[origin].connections.get(destination, [])
+
+        # Pick the same airline
+        chosen_flight = None
+        for f in flights:
+            if f["airline"] == airline:
+                chosen_flight = f
+                break
+
+        if not chosen_flight and flights:
+            chosen_flight = flights[0]  # fallback
+
+        if chosen_flight:
+            summary["segments"].append({
+                "from": origin,
+                "to": destination,
+                "airline": chosen_flight["airline"],
+                "distance": chosen_flight["distance"],
+                "price": chosen_flight["price"],
+                "time": chosen_flight["time"]
+            })
+
+            summary["total_distance"] += chosen_flight["distance"]
+            summary["total_price"] += chosen_flight["price"]
+            summary["total_time"] += chosen_flight["time"]
+
+    return summary
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     selected_origin = None
@@ -177,9 +225,13 @@ def update_map():
     if all_routes and 0 <= selected_route < len(all_routes):
         route = all_routes[selected_route]
         m = generate_folium_map(route, data)
+        map_html = m._repr_html_()
+
+        summary = build_route_summary(route, air_graph, route_preference)
 
         map_html = m._repr_html_()
-        return {"map_html": map_html}
+        return {"map_html": map_html,
+                "summary": summary}
 
     return {"map_html": ""}
 
