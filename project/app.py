@@ -33,8 +33,7 @@ def generate_folium_map(route, data):
 
     # --- Draw Markers ---
     for i in range(len(route)):
-        current_node = route[i]
-        airport_code = current_node[0] if isinstance(current_node, tuple) else current_node
+        airport_code = route[i]
         
         airport = data[airport_code]
         lat, lon = float(airport["latitude"]), float(airport["longitude"])
@@ -58,11 +57,9 @@ def generate_folium_map(route, data):
 
     # --- Draw Lines ---
     for i in range(len(route)-1):
-        node_origin = route[i]
-        node_dest = route[i+1]
+        code_origin = route[i]
+        code_dest = route[i+1]
         
-        code_origin = node_origin[0] if isinstance(node_origin, tuple) else node_origin
-        code_dest = node_dest[0] if isinstance(node_dest, tuple) else node_dest
 
         o = data[code_origin]
         d = data[code_dest]
@@ -83,27 +80,31 @@ def build_route_summary(route, graph, weight_type=None):
 
     # Loop through each flight segment
     for i in range(len(route) - 1):
-        current = route[i]
-        next_node = route[i + 1]
+        origin = route[i]
+        destination = route[i + 1]
 
-        # Handle tuple (Dijkstra) vs string (DFS/BFS)
-        origin = current[0] if isinstance(current, tuple) else current
-        destination = next_node[0] if isinstance(next_node, tuple) else next_node
-
-        airline = next_node[1] if isinstance(next_node, tuple) else "Unknown"
-
-        # Get flight details from graph
+        # Get the list of all airlines flying this specific segment
         flights = graph.airports[origin].connections.get(destination, [])
 
-        # Pick the same airline
-        chosen_flight = None
-        for f in flights:
-            if f["airline"] == airline:
-                chosen_flight = f
-                break
+        if not flights:
+            continue  # Safety net in case of bad data
 
-        if not chosen_flight and flights:
-            chosen_flight = flights[0]  # fallback
+        chosen_flight = None
+
+        # --- THE SMART SELECTOR ---
+        # If the user optimized for distance, price, or time (Dijkstra),
+        # re-scan the list and grab the exact flight that won the algorithm.
+        if weight_type in ['distance', 'price', 'time']:
+            best_val = float('inf')
+            for f in flights:
+                if f[weight_type] < best_val:
+                    best_val = f[weight_type]
+                    chosen_flight = f
+        else:
+            # If it's DFS or BFS (which don't care about weights), 
+            # just grab the very first flight on the list to show on the UI.
+            chosen_flight = flights[0]
+        # --------------------------
 
         if chosen_flight:
             summary["segments"].append({
@@ -118,6 +119,11 @@ def build_route_summary(route, graph, weight_type=None):
             summary["total_distance"] += chosen_flight["distance"]
             summary["total_price"] += chosen_flight["price"]
             summary["total_time"] += chosen_flight["time"]
+
+    # Round the final totals so they look pretty on your UI (e.g., $850.50 instead of $850.50000001)
+    summary["total_price"] = round(summary["total_price"], 2)
+    summary["total_distance"] = round(summary["total_distance"], 2)
+    summary["total_time"] = round(summary["total_time"], 2)
 
     return summary
 
