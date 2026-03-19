@@ -47,14 +47,34 @@ def find_lowest_path(graph, start_code, end_code, weight_type='distance', **kwar
             for flight in flights_list:
                 # --- NEW: BALANCED ROUTE MATH ---
                 if weight_type == 'balanced':
-                    w_price = kwargs.get('weight_price', 0.33)
-                    w_time = kwargs.get('weight_time', 0.33)
-                    w_co2 = kwargs.get('weight_co2', 0.33)
+                    w_price = kwargs.get('weight_price', 0.25)
+                    w_time = kwargs.get('weight_time', 0.25)
+                    w_dist = kwargs.get('weight_distance', 0.25)
+                    w_co2 = kwargs.get('weight_co2', 0.25)
                     
                     # Apply global multipliers to put them on an even playing field
                     # due to the way they are calculated
+                    # ==========================================
+                    # BALANCED ROUTE NORMALIZATION MATH
+                    # ==========================================
+                    # To calculate a single composite score, we must normalize 
+                    # completely different units ($, mins, kg, km) to a common baseline. 
+                    # Otherwise, large raw numbers (like 1000 km) would mathematically 
+                    # overpower smaller numbers (like $150) and ruin the slider weights.
+                    #
+                    # BASELINE: A standard 1,000 km flight costs ~$150. 
+                    # We apply global multipliers to force all metrics to equal ~150:
+                    # - Price: ~$150      (Multiplier: 1.0)  -> 150
+                    # - Time: ~75 mins    (Multiplier: 2.0)  -> 150
+                    # - CO2: ~115 kg      (Multiplier: 1.3)  -> 149.5
+                    # - Distance: 1000 km (Multiplier: 0.15) -> 150
+                    #
+                    # By leveling the playing field, a 25/25/25/25 slider split ensures 
+                    # every metric contributes exactly equal "voting power" to the score.
+                    # ==========================================
                     balanced_score = (flight['price'] * w_price) + \
                                      (flight['time'] * 2.0 * w_time) + \
+                                     (flight['distance'] * 0.15 * w_dist) + \
                                      (flight['co2'] * 1.3 * w_co2)
                                      
                     if balanced_score < best_flight_weight:

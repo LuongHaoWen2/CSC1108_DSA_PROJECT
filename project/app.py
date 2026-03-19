@@ -104,12 +104,13 @@ def build_route_summary(route, graph, weight_type=None, **kwargs):
         # for 'balanced'
         elif weight_type == "balanced":
             best_val = float('inf')
-            w_price = kwargs.get('weight_price', 0.33)
-            w_time = kwargs.get('weight_time', 0.33)
-            w_co2 = kwargs.get('weight_co2', 0.33)
+            w_price = kwargs.get('weight_price', 0.25)
+            w_time = kwargs.get('weight_time', 0.25)
+            w_dist = kwargs.get('weight_distance', 0.25)
+            w_co2 = kwargs.get('weight_co2', 0.25)
 
             for f in flights:
-                score = (f['price'] * w_price) + (f['time'] * 2.0 * w_time) + (f['co2'] * 1.3 * w_co2)
+                score = (f['price'] * w_price) + (f['time'] * 2.0 * w_time) + (f['distance'] * 0.15 * w_dist) + (f['co2'] * 1.3 * w_co2)
                 if score < best_val:
                     best_val = score
                     chosen_flight = f
@@ -162,17 +163,19 @@ def index():
         avoid_airport = request.form.get("avoid_airport")
 
         # --- Normalize sliders
-        raw_price = float(request.form.get("weight_price", 33))
-        raw_time = float(request.form.get("weight_time", 33))
-        raw_co2 = float(request.form.get("weight_co2", 33))
+        raw_price = float(request.form.get("weight_price", 25))
+        raw_time = float(request.form.get("weight_time", 25))
+        raw_dist = float(request.form.get("weight_distance", 25))
+        raw_co2 = float(request.form.get("weight_co2", 25))
 
-        total_weight = raw_price + raw_time + raw_co2
+        total_weight = raw_price + raw_time + raw_dist + raw_co2 
 
         if total_weight == 0:
-            w_price, w_time, w_co2 = 0.33, 0.33, 0.33
+            w_price, w_time, w_dist, w_co2 = 0.25, 0.25, 0.25, 0.25
         else:
             w_price = raw_price / total_weight
             w_time = raw_time / total_weight
+            w_dist = raw_dist / total_weight
             w_co2 = raw_co2 / total_weight
         # -----------------------------------------------
         
@@ -183,7 +186,7 @@ def index():
         
             elif route_preference in ["distance", "price", "time", "co2", "balanced"]:
                 path, total = find_lowest_path(air_graph, selected_origin, selected_destination, weight_type=route_preference, 
-                                               weight_price=w_price, weight_time=w_time, weight_co2=w_co2)
+                                               weight_price=w_price, weight_time=w_time, weight_distance=w_dist, weight_co2=w_co2)
                 all_routes = [path] if path else []
                 if path:
                     if route_preference == "distance":
@@ -236,16 +239,18 @@ def update_map():
     route_preference = request.form.get("preference") 
 
     # Slider math
-    raw_price = float(request.form.get("weight_price", 33))
-    raw_time = float(request.form.get("weight_time", 33))
-    raw_co2 = float(request.form.get("weight_co2", 33))
-    total_weight = raw_price + raw_time + raw_co2
+    raw_price = float(request.form.get("weight_price", 25))
+    raw_time = float(request.form.get("weight_time", 25))
+    raw_dist = float(request.form.get("weight_distance", 25))
+    raw_co2 = float(request.form.get("weight_co2", 25))
+    total_weight = raw_price + raw_time + raw_dist + raw_co2
 
     if total_weight == 0:
-        w_price, w_time, w_co2 = 0.33, 0.33, 0.33
+        w_price, w_time, w_dist, w_co2 = 0.25, 0.25, 0.25, 0.25
     else:
         w_price = raw_price / total_weight
         w_time = raw_time / total_weight
+        w_dist = raw_dist / total_weight
         w_co2 = raw_co2 / total_weight
     # -----------------------------------------
 
@@ -259,7 +264,7 @@ def update_map():
 
         elif route_preference in ["distance", "price", "time", "co2", "balanced"]:
             path, total = find_lowest_path(air_graph, selected_origin, selected_destination, weight_type=route_preference,
-                                           weight_price=w_price, weight_time=w_time, weight_co2=w_co2)
+                                           weight_price=w_price, weight_time=w_time,weight_distance=w_dist, weight_co2=w_co2)
             all_routes = [path] if path else []
 
         elif route_preference == "fewest_hops":
@@ -273,7 +278,7 @@ def update_map():
 
         # Generates summary when path button is clicked
         summary = build_route_summary(route, air_graph, route_preference,
-                                      weight_price=w_price, weight_time=w_time, weight_co2=w_co2)
+                                      weight_price=w_price, weight_time=w_time, weight_distance=w_dist, weight_co2=w_co2)
 
         return {"map_html": map_html, "summary": summary}
 

@@ -68,14 +68,17 @@
                         (Higher % means that metric will be more 'cost' efficient. e.g., 100% Price means find the absolute cheapest ticket.)
                     </p>
                     
-                    <label style="font-size: 0.85em; margin-top: 0;">Prioritize Low Cost: <span id="valPrice">{{ request.form.get('weight_price', 33) }}</span>%</label>
-                    <input type="range" name="weight_price" id="sliderPrice" min="0" max="100" value="{{ request.form.get('weight_price', 33) }}">
+                    <label style="font-size: 0.85em; margin-top: 0;">Prioritize Low Cost: <span id="valPrice">{{ request.form.get('weight_price', 25) }}</span>%</label>
+                    <input type="range" name="weight_price" id="sliderPrice" min="0" max="100" value="{{ request.form.get('weight_price', 25) }}">
                     
-                    <label style="font-size: 0.85em; margin-top: 10px;">Prioritize Fast Travel: <span id="valTime">{{ request.form.get('weight_time', 33) }}</span>%</label>
-                    <input type="range" name="weight_time" id="sliderTime" min="0" max="100" value="{{ request.form.get('weight_time', 33) }}">
+                    <label style="font-size: 0.85em; margin-top: 10px;">Prioritize Fast Travel: <span id="valTime">{{ request.form.get('weight_time', 25) }}</span>%</label>
+                    <input type="range" name="weight_time" id="sliderTime" min="0" max="100" value="{{ request.form.get('weight_time', 25) }}">
+
+                    <label style="font-size: 0.85em; margin-top: 10px;">Prioritize Short Distance: <span id="valDist">{{ request.form.get('weight_distance', 25) }}</span>%</label>
+                    <input type="range" name="weight_distance" id="sliderDist" min="0" max="100" value="{{ request.form.get('weight_distance', 25) }}">
                     
-                    <label style="font-size: 0.85em; margin-top: 10px;">Prioritize Green Flights (CO2): <span id="valCO2">{{ request.form.get('weight_co2', 33) }}</span>%</label>
-                    <input type="range" name="weight_co2" id="sliderCO2" min="0" max="100" value="{{ request.form.get('weight_co2', 33) }}">
+                    <label style="font-size: 0.85em; margin-top: 10px;">Prioritize Green Flights (CO2): <span id="valCO2">{{ request.form.get('weight_co2', 25) }}</span>%</label>
+                    <input type="range" name="weight_co2" id="sliderCO2" min="0" max="100" value="{{ request.form.get('weight_co2', 25) }}">
                 </div>
 
                 <label for="max_stops">Max Stops (optional):</label>
@@ -182,6 +185,7 @@
 
             let w_price = $('#sliderPrice').val();
             let w_time = $('#sliderTime').val();
+            let w_dist = $('#sliderDist').val();
             let w_co2 = $('#sliderCO2').val();
 
             $.ajax({
@@ -196,7 +200,8 @@
                     avoid_airport: avoid_airport,
                     weight_price: w_price,
                     weight_time: w_time,
-                    weight_co2: w_co2
+                    weight_co2: w_co2,
+                    weight_distance: w_dist
                 },
                 success: function(response) {
                     $('.map').html(response.map_html);
