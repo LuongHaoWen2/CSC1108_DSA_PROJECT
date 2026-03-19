@@ -9,6 +9,37 @@ api_bp = Blueprint('api', __name__)
 def get_graph():
     from app import graph
     return graph
+# --- Helper to parse common filters ---
+def get_common_filters():
+    """
+    Parse and normalize shared API filters from query params.
+    Basically all the filters on the webpage will be gathered here for parsing around the different endpoints
+    Returns (filters_dict, error_response_or_None)
+    """
+    start = request.args.get('start', '').upper().strip()
+    end = request.args.get('end', '').upper().strip()
+    avoid_airport = request.args.get('avoid', '').upper().strip() or None
+    airline = request.args.get('airline', '').strip() or None
+    
+    if not start or not end:
+        return None, (jsonify({"error": "start and end are required"}), 400)
+
+    # Always parse max_stops for consistency and future-proofing
+    raw_max = request.args.get('max_stops', 3)
+    try:
+        max_stops = int(raw_max)
+    except ValueError:
+        return None, (jsonify({"error": "Max stops must be an integer"}), 400)
+
+    filters = {
+        "start": start,
+        "end": end,
+        "avoid_airport": avoid_airport,
+        "airline": airline,
+        "max_stops": max_stops,
+    }
+
+    return filters, None
 
 # --- Helper to package the Dijkstra result into a full Route object ---
 def package_route(path, weight_type, **kwargs):
@@ -25,10 +56,20 @@ def package_route(path, weight_type, **kwargs):
     total_time = 0
     total_co2 = 0
     airlines = []
+    selected_airline = kwargs.get('airline', None)
 
     for i in range(len(path) - 1):
         u, v = path[i], path[i+1]
         flights = graph.airports[u].connections[v]
+
+        if selected_airline:
+            flights = [
+                f for f in flights
+                if f.get('airline', '').lower() == selected_airline.lower()
+            ]
+
+        if not flights:
+            continue
         
         # Pick the flight that Dijkstra actually chose
         best_f = None
@@ -76,6 +117,7 @@ def build_route_summary(path, weight_type=None, **kwargs):
         "total_time": 0,
         "total_co2": 0,
     }
+    selected_airline = kwargs.get("airline", None)
 
     for i in range(len(path) - 1):
         origin = path[i]
@@ -86,6 +128,13 @@ def build_route_summary(path, weight_type=None, **kwargs):
             continue
 
         flights = flights.connections.get(destination, [])
+
+        if selected_airline:
+            flights = [
+                f for f in flights
+                if f.get("airline", "").lower() == selected_airline.lower()
+            ]
+
         if not flights:
             continue
 
@@ -136,70 +185,103 @@ def build_route_summary(path, weight_type=None, **kwargs):
 # --- Dijkstra Routes ---
 @api_bp.route('/api/shortest', methods=['GET'])
 def shortest_path():
-    start = request.args.get('start', '').upper()
-    end = request.args.get('end', '').upper()
+    params, err = get_common_filters()
+    if err:
+        return err
+
     graph = get_graph()
-    path, _ = find_lowest_path(graph, start, end, weight_type='distance')
+    path, _ = find_lowest_path(
+        graph,
+        params["start"],
+        params["end"],
+        weight_type='distance',
+        airline=params["airline"],
+    )
     
-    route_obj = package_route(path, 'distance')
+    route_obj = package_route(path, 'distance', airline=params["airline"])
     if not route_obj:
         return jsonify({"error": "No route found"}), 404
     return jsonify({
         "route": route_obj.to_dict(),
-        "summary": build_route_summary(path, "distance"),
+        "summary": build_route_summary(path, "distance", airline=params["airline"]),
     })
 
 @api_bp.route('/api/cheapest', methods=['GET'])
 def cheapest_path():
-    start = request.args.get('start', '').upper()
-    end = request.args.get('end', '').upper()
+    params, err = get_common_filters()
+    if err:
+        return err
+
     graph = get_graph()
-    path, _ = find_lowest_path(graph, start, end, weight_type='price')
+    path, _ = find_lowest_path(
+        graph,
+        params["start"],
+        params["end"],
+        weight_type='price',
+        airline=params["airline"],
+    )
     
-    route_obj = package_route(path, 'price')
+    route_obj = package_route(path, 'price', airline=params["airline"])
     if not route_obj:
         return jsonify({"error": "No route found"}), 404
     return jsonify({
         "route": route_obj.to_dict(),
-        "summary": build_route_summary(path, "price"),
+        "summary": build_route_summary(path, "price", airline=params["airline"]),
     })
 
 @api_bp.route('/api/fastest', methods=['GET'])
 def fastest_path():
-    start = request.args.get('start', '').upper()
-    end = request.args.get('end', '').upper()
+    params, err = get_common_filters()
+    if err:
+        return err
+
     graph = get_graph()
-    path, _ = find_lowest_path(graph, start, end, weight_type='time')
+    path, _ = find_lowest_path(
+        graph,
+        params["start"],
+        params["end"],
+        weight_type='time',
+        airline=params["airline"],
+    )
     
-    route_obj = package_route(path, 'time')
+    route_obj = package_route(path, 'time', airline=params["airline"])
     if not route_obj:
         return jsonify({"error": "No route found"}), 404
     return jsonify({
         "route": route_obj.to_dict(),
-        "summary": build_route_summary(path, "time"),
+        "summary": build_route_summary(path, "time", airline=params["airline"]),
     })
 
 @api_bp.route('/api/greenest', methods=['GET'])
 def greenest_path():
     """NEW: Optimized for CO2 Emissions"""
-    start = request.args.get('start', '').upper()
-    end = request.args.get('end', '').upper()
+    params, err = get_common_filters()
+    if err:
+        return err
+
     graph = get_graph()
-    path, _ = find_lowest_path(graph, start, end, weight_type='co2')
+    path, _ = find_lowest_path(
+        graph,
+        params["start"],
+        params["end"],
+        weight_type='co2',
+        airline=params["airline"],
+    )
     
-    route_obj = package_route(path, 'co2')
+    route_obj = package_route(path, 'co2', airline=params["airline"])
     if not route_obj:
         return jsonify({"error": "No route found"}), 404
     return jsonify({
         "route": route_obj.to_dict(),
-        "summary": build_route_summary(path, "co2"),
+        "summary": build_route_summary(path, "co2", airline=params["airline"]),
     })
 
 @api_bp.route('/api/balanced', methods=['GET'])
 def balanced_path():
     """NEW: Multi-Criteria Optimization"""
-    start = request.args.get('start', '').upper()
-    end = request.args.get('end', '').upper()
+    params, err = get_common_filters()
+    if err:
+        return err
     
     # Grab slider values from URL parameters
     try:
@@ -218,12 +300,13 @@ def balanced_path():
         wd, wp, wt, wc = w_dist/total, w_price/total, w_time/total, w_co2/total
 
     graph = get_graph()
-    path, _ = find_lowest_path(graph, start, end, weight_type='balanced',
-                               weight_distance=wd, weight_price=wp, 
-                               weight_time=wt, weight_co2=wc)
+    path, _ = find_lowest_path(graph, params["start"], params["end"], weight_type='balanced',
+                               weight_distance=wd, weight_price=wp,
+                               weight_time=wt, weight_co2=wc,
+                               airline=params["airline"])
 
-    route_obj = package_route(path, 'balanced', weight_distance=wd, weight_price=wp, 
-                              weight_time=wt, weight_co2=wc)
+    route_obj = package_route(path, 'balanced', weight_distance=wd, weight_price=wp,
+                              weight_time=wt, weight_co2=wc, airline=params["airline"])
     
     if not route_obj:
         return jsonify({"error": "No route found"}), 404
@@ -236,6 +319,7 @@ def balanced_path():
             weight_price=wp,
             weight_time=wt,
             weight_co2=wc,
+            airline=params["airline"],
         ),
     })
 
@@ -243,38 +327,27 @@ def balanced_path():
 @api_bp.route('/api/fewest-layovers', methods=['GET'])
 def fewest_layovers():
     """ Fewest Layovers between Two Airports"""
-    start = request.args.get('start', '').upper()
-    end = request.args.get('end', '').upper()
-    max_stops = request.args.get('max_stops', 3)
-    avoid_airport = request.args.get('avoid', None)
-
-    if avoid_airport:
-        avoid_airport = avoid_airport.upper()
-
-    if not start or not end:
-        return jsonify({"error": "start and end are required"}) , 400
-
-    try:
-        max_stops = int(max_stops)
-    except ValueError:
-        return jsonify({"error": "Max stops must be an integer"}), 400
+    params, err = get_common_filters()
+    if err:
+        return err
 
     graph = get_graph()
     path = find_fewest_layovers(
         graph,
-        start,
-        end,
-        avoid_airport=avoid_airport,
-        max_stops=max_stops,
+        params["start"],
+        params["end"],
+        avoid_airport=params["avoid_airport"],
+        max_stops=params["max_stops"],
+        airline=params["airline"],
     )
 
     if path is None:
-        return jsonify({"error": f"No route found from {start} to {end}"}), 404
+        return jsonify({"error": f"No route found from {params['start']} to {params['end']}"}), 404
 
     return jsonify({
         "path": path,
         "stops": len(path) - 2,
-        "summary": build_route_summary(path),
+        "summary": build_route_summary(path, airline=params["airline"]),
     })
 
 
@@ -282,31 +355,40 @@ def fewest_layovers():
 @api_bp.route('/api/all-routes', methods=['GET'])
 def all_routes():
     """ All Possible Routes up to Max Stops"""
-    start = request.args.get('start', '').upper()
-    end = request.args.get('end', '').upper()
-    max_stops = request.args.get('max_stops', 3)
-    avoid_airport = request.args.get('avoid', None)
-
-    if avoid_airport:
-        avoid_airport = avoid_airport.upper()
-
-    try:
-        max_stops = int(max_stops)
-    except ValueError:
-        return jsonify({"error": f"Max stops must be an integer"}) , 400
+    params, err = get_common_filters()
+    if err:
+        return err
 
     graph = get_graph()
-    routes = find_routes(graph, start, end, max_stops, avoid_airport=avoid_airport)
+    routes = find_routes(
+        graph,
+        params["start"],
+        params["end"],
+        params["max_stops"],
+        avoid_airport=params["avoid_airport"],
+        airline=params["airline"],
+    )
 
     if not routes:
-        return jsonify({"error": f"No route found from {start} to {end}"}) , 404
+        return jsonify({"error": f"No route found from {params['start']} to {params['end']}"}) , 404
 
     return jsonify({
         "routes": routes,
-        "summaries": [build_route_summary(path) for path in routes],
+        "summaries": [build_route_summary(path, airline=params["airline"]) for path in routes],
         "total_found": len(routes),
     })
+# ---- Airline List ----
+@api_bp.route('/api/airlines', methods=['GET'])
+def airlines():
+    graph = get_graph()
+    names = set()
 
+    for airport in graph.airports.values():
+        for flights in airport.connections.values():
+            for f in flights:
+                names.add(f.get("airline", "Unknown Airline"))
+
+    return jsonify({"airlines": sorted(names)})
 # ---- Airport Info ----
 @api_bp.route('/api/airports', methods=['GET'])
 def airports():

@@ -12,6 +12,8 @@ def find_lowest_path(graph, start_code, end_code, weight_type='distance', **kwar
     if start_code not in graph.airports or end_code not in graph.airports:
         return None, float('inf')
 
+    selected_airline = kwargs.get('airline', None)
+
     pq = [(0, start_code, [start_code])]
     min_weights = {code: float('inf') for code in graph.airports}
     min_weights[start_code] = 0
@@ -28,6 +30,16 @@ def find_lowest_path(graph, start_code, end_code, weight_type='distance', **kwar
         current_airport_obj = graph.airports[current_node]
 
         for neighbor, flights_list in current_airport_obj.connections.items():
+            if selected_airline:
+                filtered_flights = []
+                for f in flights_list:
+                    if f.get('airline', '').lower() == selected_airline.lower():
+                        filtered_flights.append(f)
+                flights_list = filtered_flights
+
+            if not flights_list:
+                continue
+
             best_flight_weight = float('inf')
             
             for flight in flights_list:

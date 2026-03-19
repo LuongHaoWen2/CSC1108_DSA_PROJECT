@@ -429,6 +429,12 @@
                 </select>
             </div>
         </div>
+        <div class="field">
+            <label>Airline (optional)</label>
+            <select id="airline" class="searchable">
+                <option value="">Any airline</option>
+            </select>
+        </div>
 
         <button id="find-btn">Find Route</button>
 
@@ -486,7 +492,18 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
 let routeLayer   = null;
 let markerLayer  = L.layerGroup().addTo(map);
 let airportCache = {};
+// ── Load airlines ─────────────────────────────────────
+async function loadAirlines() {
+    const res = await fetch('/api/airlines');
+    const data = await res.json();
+    const airlines = data.airlines || [];
 
+    const el = $('#airline');
+    // Ensure "Any airline" is always the first option
+    el.prepend(new Option('Any airline', ''));
+    airlines.forEach(name => el.append(new Option(name, name)));
+    el.select2({ placeholder: 'Any airline', width: '100%', allowClear: true });
+}
 // ── Load airports ──────────────────────────────────────
 async function loadAirports() {
     const res  = await fetch('/api/airports');
@@ -623,7 +640,8 @@ document.getElementById('find-btn').addEventListener('click', async () => {
     maxStopsInput.value = normalizedMaxStops;
     const max_stops = normalizedMaxStops;
     const avoid = document.getElementById('avoid').value;
-
+    const airline = document.getElementById('airline').value;
+    const airlineParam = airline ? `&airline=${encodeURIComponent(airline)}` : '';
     const status = document.getElementById('status');
 
     if (!origin || !destination) {
@@ -646,9 +664,9 @@ document.getElementById('find-btn').addEventListener('click', async () => {
     try {
         let url, res, data;
         const avoidParam = avoid ? `&avoid=${avoid}` : '';
-
+        
         if (preference === 'dfs') {
-            url  = `/api/all-routes?start=${origin}&end=${destination}&max_stops=${max_stops}${avoidParam}`;
+            url  = `/api/all-routes?start=${origin}&end=${destination}&max_stops=${max_stops}${avoidParam}${airlineParam}`;
             res  = await fetch(url);
             data = await res.json();
 
@@ -686,7 +704,7 @@ document.getElementById('find-btn').addEventListener('click', async () => {
             });
 
         } else if (preference === 'fewest_hops') {
-            url  = `/api/fewest-layovers?start=${origin}&end=${destination}&max_stops=${max_stops}${avoidParam}`;
+            url  = `/api/fewest-layovers?start=${origin}&end=${destination}&max_stops=${max_stops}${avoidParam}${airlineParam}`;
             res  = await fetch(url);
             data = await res.json();
 
@@ -705,7 +723,7 @@ document.getElementById('find-btn').addEventListener('click', async () => {
                 co2: 'greenest',
                 balanced: 'balanced'
             };
-            url  = `/api/${epMap[preference]}?start=${origin}&end=${destination}`;
+            url  = `/api/${epMap[preference]}?start=${origin}&end=${destination}${airlineParam}`;
 
             // If it's the balanced route, append the slider values to the URL
             if (preference === 'balanced') {
@@ -740,6 +758,7 @@ document.getElementById('find-btn').addEventListener('click', async () => {
 
 // ── Init ───────────────────────────────────────────────
 loadAirports();
+loadAirlines();
 </script>
 </body>
 </html>

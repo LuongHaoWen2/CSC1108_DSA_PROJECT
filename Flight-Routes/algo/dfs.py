@@ -1,4 +1,4 @@
-def find_routes(graph, start, end, max_stops, avoid_airport=None):
+def find_routes(graph, start, end, max_stops, avoid_airport=None, airline=None):
     """
     Iterative DFS to find all routes from start to end up to max_stops.
     graph: FlightGraph instance
@@ -26,6 +26,17 @@ def find_routes(graph, start, end, max_stops, avoid_airport=None):
             for neighbor in current_airport_obj.connections:
                 if avoid_airport and neighbor == avoid_airport:
                     continue              #avoid airport
+
+                if airline:
+                    flights = current_airport_obj.connections.get(neighbor, [])
+                    has_airline = False
+                    for f in flights:
+                        if f.get("airline", "").lower() == airline.lower():
+                            has_airline = True
+                            break
+                    if not has_airline:
+                        continue
+
                 if neighbor not in path:  # avoid cycles
                     stack.append((neighbor, path + [neighbor]))
 
