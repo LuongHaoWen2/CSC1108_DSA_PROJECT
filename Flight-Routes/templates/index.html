@@ -491,7 +491,7 @@ let airportCache = {};
 async function loadAirports() {
     const res  = await fetch('/api/airports');
     const data = await res.json();
-    const codes = data.airports.sort();
+    const airports = data.airports || [];
 
     // Show/hide sliders based on dropdown for "balanced"
     document.getElementById('preference').addEventListener('change', function() {
@@ -505,11 +505,14 @@ async function loadAirports() {
         });
     });
 
-    document.getElementById('airport-count').textContent = codes.length;
+    document.getElementById('airport-count').textContent = airports.length;
 
     ['#origin', '#destination', '#avoid'].forEach(sel => {
         const el = $(sel);
-        codes.forEach(code => el.append(new Option(code, code)));
+        airports.forEach(airport => {
+            const text = airport.label || `${airport.name} (${airport.code})`;
+            el.append(new Option(text, airport.code));
+        });
         el.select2({ placeholder: 'Type to search', width: '100%' });
     });
 }
@@ -548,7 +551,7 @@ async function drawRoute(path) {
             opacity:     1,
             fillOpacity: 1
         }).addTo(markerLayer)
-          .bindPopup(`<b style="color:#00d4ff">${code}</b><br>${info.name}`);
+                    .bindPopup(`<b style="color:#00d4ff">${code}</b><br>${info.name}${info.country_code ? ` (${info.country_code})` : ''}`);
     }
 
     routeLayer = L.polyline(coords, {
@@ -574,45 +577,40 @@ function renderPath(path) {
 }
 
 // ── Build segments ─────────────────────────────────────
-async function renderSegments(path) {
+function renderSegments(segments = []) {
     const el = document.getElementById('segments');
     el.innerHTML = '';
 
-    let totalDist = 0, totalPrice = 0, totalTime = 0;
+    segments.forEach(seg => {
+        const dist = Number(seg.distance || 0).toFixed(0);
+        const price = Number(seg.price || 0).toFixed(2);
+        const time = Number(seg.time || 0).toFixed(0);
+        const co2 = Number(seg.co2 || 0).toFixed(0);
 
-    for (let i = 0; i < path.length - 1; i++) {
-        const from = path[i];
-        const to   = path[i + 1];
-
-        const res  = await fetch(`/api/cheapest?start=${from}&end=${to}`);
-        const data = await res.json();
-
-        if (data.path) {
-            const segDist  = 0;
-            const segPrice = data.total_price || 0;
-            totalPrice += segPrice;
-
-            el.innerHTML += `
-                <div class="segment">
-                    <div class="seg-route">${from} → ${to}</div>
-                    <div class="seg-detail">$${segPrice.toFixed(2)}</div>
-                </div>`;
-        }
-    }
-
-    document.getElementById('stat-price').textContent = `$${totalPrice.toFixed(0)}`;
+        el.innerHTML += `
+            <div class="segment">
+                <div class="seg-route">${seg.from} → ${seg.to}</div>
+                <div class="seg-detail">${seg.airline} · ${dist} km · $${price} · ${time} min · ${co2} kg CO2</div>
+            </div>`;
+    });
 }
 
 // ── Show summary ───────────────────────────────────────
-function showSummary(path, dist, price, time, co2) {
+function showSummary(summary) {
+    if (!summary || !summary.path) {
+        document.getElementById('summary').style.display = 'none';
+        return;
+    }
+
     document.getElementById('summary').style.display = 'block';
-    document.getElementById('stat-dist').textContent  = dist  ? Math.round(dist)  : '—';
-    document.getElementById('stat-price').textContent = price ? `$${Math.round(price)}` : '—';
-    document.getElementById('stat-time').textContent  = time  ? Math.round(time)  : '—';
-    document.getElementById('stat-co2').textContent   = co2   ? Math.round(co2)   : '—'; 
-    document.getElementById('routes-list').innerHTML  = '';
-    renderPath(path);
-    drawRoute(path);
+    document.getElementById('stat-dist').textContent = Math.round(summary.total_distance || 0);
+    document.getElementById('stat-price').textContent = `$${Math.round(summary.total_price || 0)}`;
+    document.getElementById('stat-time').textContent = Math.round(summary.total_time || 0);
+    document.getElementById('stat-co2').textContent = Math.round(summary.total_co2 || 0);
+
+    renderPath(summary.path);
+    renderSegments(summary.segments || []);
+    drawRoute(summary.path);
 }
 
 // ── Find route ─────────────────────────────────────────
@@ -655,15 +653,12 @@ document.getElementById('find-btn').addEventListener('click', async () => {
 
             status.className   = 'success';
             status.textContent = `Found ${data.total_found} routes`;
+            document.getElementById('routes-list').innerHTML = '';
 
-            document.getElementById('summary').style.display = 'block';
-            document.getElementById('stat-dist').textContent  = '—';
-            document.getElementById('stat-price').textContent = '—';
-            document.getElementById('stat-time').textContent  = '—';
-            document.getElementById('segments').innerHTML     = '';
-
-            renderPath(data.routes[0]);
-            drawRoute(data.routes[0]);
+            const summaries = data.summaries || [];
+            if (summaries.length > 0) {
+                showSummary(summaries[0]);
+            }
 
             const listEl = document.getElementById('routes-list');
             listEl.innerHTML = '';
@@ -674,8 +669,15 @@ document.getElementById('find-btn').addEventListener('click', async () => {
                 btn.onclick = () => {
                     document.querySelectorAll('.route-item').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
-                    renderPath(route);
-                    drawRoute(route);
+                    const summary = summaries[i] || {
+                        path: route,
+                        total_distance: 0,
+                        total_price: 0,
+                        total_time: 0,
+                        total_co2: 0,
+                        segments: [],
+                    };
+                    showSummary(summary);
                 };
                 listEl.appendChild(btn);
             });
@@ -689,10 +691,9 @@ document.getElementById('find-btn').addEventListener('click', async () => {
 
             status.className   = 'success';
             status.textContent = `${data.stops} layover(s)`;
-            
-            showSummary(data.path, null, null, null, null); 
-            
-            document.getElementById('segments').innerHTML = '';
+
+            showSummary(data.summary);
+            document.getElementById('routes-list').innerHTML = '';
         } else {
             const epMap = { 
                 distance: 'shortest', 
@@ -716,17 +717,14 @@ document.getElementById('find-btn').addEventListener('click', async () => {
 
             if (!res.ok) throw new Error(data.error);
 
-            
-            const dist  = data.distance || null;
-            const price = data.price    || null;
-            const time  = data.time     || null;
-            const co2 = data.co2        || null;
-            const total = dist ?? price ?? time;
+            const routeData = data.route || {};
+            const summary = data.summary || null;
+            const total = routeData.distance ?? routeData.price ?? routeData.time ?? routeData.co2;
 
             status.className   = 'success';
             status.textContent = `Total: ${total}`;
-            showSummary(data.path, dist, price, time, co2);
-            document.getElementById('segments').innerHTML = '';
+            showSummary(summary);
+            document.getElementById('routes-list').innerHTML = '';
         }
 
     } catch (e) {

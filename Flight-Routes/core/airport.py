@@ -1,10 +1,11 @@
 
 class AirportNode:
-    def __init__(self, code, name, latitude, longitude):
+    def __init__(self, code, name, latitude, longitude, country_code=""):
         self.code = code
         self.name = name
         self.latitude = latitude
         self.longitude = longitude
+        self.country_code = country_code
         self.connections = {}
 
     def add_connection(self, destination, airline, distance, price, time, co2):
