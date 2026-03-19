@@ -245,6 +245,7 @@ def fewest_layovers():
     """ Fewest Layovers between Two Airports"""
     start = request.args.get('start', '').upper()
     end = request.args.get('end', '').upper()
+    max_stops = request.args.get('max_stops', 3)
     avoid_airport = request.args.get('avoid', None)
 
     if avoid_airport:
@@ -253,8 +254,19 @@ def fewest_layovers():
     if not start or not end:
         return jsonify({"error": "start and end are required"}) , 400
 
+    try:
+        max_stops = int(max_stops)
+    except ValueError:
+        return jsonify({"error": "Max stops must be an integer"}), 400
+
     graph = get_graph()
-    path = find_fewest_layovers(graph, start, end, avoid_airport=avoid_airport)
+    path = find_fewest_layovers(
+        graph,
+        start,
+        end,
+        avoid_airport=avoid_airport,
+        max_stops=max_stops,
+    )
 
     if path is None:
         return jsonify({"error": f"No route found from {start} to {end}"}), 404
