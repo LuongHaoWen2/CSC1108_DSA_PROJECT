@@ -1,9 +1,9 @@
 import heapq
 
-def find_lowest_path(graph, start_code, end_code, weight_type='distance'):
+def find_lowest_path(graph, start_code, end_code, weight_type='distance', **kwargs):
     """
     Finds the optimal flight path between two airports using Dijkstra's algorithm.
-    weight_type can be 'distance', 'price', or 'time'.
+    weight_type can be 'distance', 'price', 'time', 'co2', or 'balanced'.
     
     Returns:
         tuple: (path as a list of strings, total cumulative weight)
@@ -45,20 +45,31 @@ def find_lowest_path(graph, start_code, end_code, weight_type='distance'):
             best_flight_weight = float('inf')
             
             for flight in flights_list:
-                if flight[weight_type] < best_flight_weight:
-                    best_flight_weight = flight[weight_type]
-            # ------------------------
+                # --- NEW: BALANCED ROUTE MATH ---
+                if weight_type == 'balanced':
+                    w_price = kwargs.get('weight_price', 0.33)
+                    w_time = kwargs.get('weight_time', 0.33)
+                    w_co2 = kwargs.get('weight_co2', 0.33)
+                    
+                    # Apply global multipliers to put them on an even playing field
+                    # due to the way they are calculated
+                    balanced_score = (flight['price'] * w_price) + \
+                                     (flight['time'] * 2.0 * w_time) + \
+                                     (flight['co2'] * 1.3 * w_co2)
+                                     
+                    if balanced_score < best_flight_weight:
+                        best_flight_weight = balanced_score
+                
+                # STANDARD MODE (Cost, Time, CO2, Distance)
+                else:
+                    if flight[weight_type] < best_flight_weight:
+                        best_flight_weight = flight[weight_type]
 
-            # Calculate the new total score if we take this flight
             new_total_weight = current_weight + best_flight_weight
 
-            # If this new path beats the current record on the scoreboard, use it
             if new_total_weight < min_weights[neighbor]:
                 min_weights[neighbor] = new_total_weight
-                
                 new_path = path + [neighbor]
-                
-                # Push the new, better path into priority queue
                 heapq.heappush(pq, (new_total_weight, neighbor, new_path))
 
     # If the queue empties and did not hit destination

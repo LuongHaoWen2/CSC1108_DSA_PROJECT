@@ -9,7 +9,6 @@ class AirportNode:
         self.name = name
         self.latitude = latitude
         self.longitude = longitude
-
         # adjacency list
         # {DEST_CODE: [{"airline": "airlineName1", "distance": xxx, "price": xxx, "time": xxx}, {"airline": "airlineName2", "distance": xxx, "price": xxx, "time": xxx}]}
         # Example:
@@ -19,20 +18,21 @@ class AirportNode:
         #         {"airline": "Singapore Airlines", "distance": 5840, "price": 920.00, "time": 425},
         #         {"airline": "Scoot", "distance": 5840, "price": 410.20, "time": 450}
         #     ],
-        #     "BKK": [
+        # "BKK": [
         #         {"airline": "AirAsia", "distance": 1430, "price": 120.00, "time": 150}
         #     ]
         # }
         self.connections = {}
 
-    def add_connection(self, destination, airline, distance, price, time):
+    def add_connection(self, destination, airline, distance, price, time, co2):
         if destination not in self.connections:
             self.connections[destination] = []
         self.connections[destination].append({
             "airline": airline,
             "distance": distance,
             "price": price,
-            "time": time
+            "time": time,
+            "co2": co2
         })
 
 
@@ -46,9 +46,9 @@ class FlightGraph:
         if code not in self.airports:
             self.airports[code] = AirportNode(code, name, lat, lon)
 
-    def add_flight(self, origin, destination, airline, distance, price, time):
+    def add_flight(self, origin, destination, airline, distance, price, time, co2):
         if origin in self.airports and destination in self.airports:
-            self.airports[origin].add_connection(destination, airline, distance, price, time)
+            self.airports[origin].add_connection(destination, airline, distance, price, time, co2)
 
 
 def load_flight_data(graph, filepath):
@@ -108,4 +108,8 @@ def load_flight_data(graph, filepath):
 
             price = round((base_fare + distance * cost_per_km) * random_variance, 2)
 
-            graph.add_flight(origin, dest, airline_name, distance, price, time)
+            # co2 calculation
+            eco_variance = random.uniform(0.85, 1.15)
+            co2_emission = round(distance * 0.115 * eco_variance, 2)
+
+            graph.add_flight(origin, dest, airline_name, distance, price, time, co2_emission)
