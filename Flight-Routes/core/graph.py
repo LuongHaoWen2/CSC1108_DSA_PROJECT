@@ -12,9 +12,9 @@ class FlightGraph:
         if code not in self.airports:
             self.airports[code] = AirportNode(code, name, lat, lon)
 
-    def add_flight(self, origin, destination, airline, distance, price, time):
+    def add_flight(self, origin, destination, airline, distance, price, time, co2):
         if origin in self.airports and destination in self.airports:
-            self.airports[origin].add_connection(destination, airline, distance, price, time)
+            self.airports[origin].add_connection(destination, airline, distance, price, time, co2)
 
     def get_airport(self, code):
         return self.airports.get(code, None)
@@ -78,6 +78,10 @@ def load_flight_data(graph, filepath):
                 random_variance = random.uniform(0.95, 1.05)
                 price = round((base_fare + distance * cost_per_km) * random_variance, 2)
 
-                # Add flight with calculated price
-                graph.add_flight(origin, dest, airline_name, distance, price, time)
+                # Calculate co2
+                eco_variance = random.uniform(0.85, 1.15)
+                co2 = round(distance * 0.115 * eco_variance, 2)
+
+                # Add flight with calculated price and co2
+                graph.add_flight(origin, dest, airline_name, distance, price, time, co2)
 

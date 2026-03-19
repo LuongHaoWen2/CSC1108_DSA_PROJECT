@@ -7,7 +7,7 @@ class AirportNode:
         self.longitude = longitude
         self.connections = {}
 
-    def add_connection(self, destination, airline, distance, price, time):
+    def add_connection(self, destination, airline, distance, price, time, co2):
         if destination not in self.connections:
             self.connections[destination] = []
 
@@ -15,5 +15,6 @@ class AirportNode:
             "airline": airline,
             "distance": distance,
             "price": price,
-            "time": time
+            "time": time,
+            "co2": co2
         })
