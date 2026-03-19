@@ -394,9 +394,27 @@
                 <option value="distance">Shortest Distance</option>
                 <option value="price">Lowest Price</option>
                 <option value="time">Fastest Time</option>
+                <option value="co2">Lowest CO2</option>
+                <option value="balanced">Balanced Route</option>
                 <option value="fewest_hops">Fewest Layovers</option>
                 <option value="dfs">All Routes (DFS)</option>
             </select>
+        </div>
+
+        <div id="balancedSliders" style="display: none; background: #0d1526; border: 1px solid #1e2d40; padding: 12px; margin-bottom: 14px; border-radius: 6px;">
+            <p style="font-size: 11px; color: #00d4ff; margin-bottom: 8px; text-transform: uppercase; font-family: 'Space Mono', monospace;">Adjust Priorities</p>
+            
+            <label style="font-size: 10px; color: #64748b;">Distance: <span id="valDist">25</span>%</label>
+            <input type="range" id="sliderDist" min="0" max="100" value="25" style="width: 100%; margin-bottom: 8px;">
+            
+            <label style="font-size: 10px; color: #64748b;">Price: <span id="valPrice">25</span>%</label>
+            <input type="range" id="sliderPrice" min="0" max="100" value="25" style="width: 100%; margin-bottom: 8px;">
+            
+            <label style="font-size: 10px; color: #64748b;">Time: <span id="valTime">25</span>%</label>
+            <input type="range" id="sliderTime" min="0" max="100" value="25" style="width: 100%; margin-bottom: 8px;">
+
+            <label style="font-size: 10px; color: #64748b;">CO2: <span id="valCO2">25</span>%</label>
+            <input type="range" id="sliderCO2" min="0" max="100" value="25" style="width: 100%;">
         </div>
 
         <div class="row-fields">
@@ -422,7 +440,7 @@
         <div id="summary">
             <h3>Route Summary</h3>
 
-            <div class="stat-grid">
+            <div class="stat-grid" style="grid-template-columns: repeat(4, 1fr);">
                 <div class="stat-card">
                     <div class="val" id="stat-dist">—</div>
                     <div class="lbl">km</div>
@@ -434,6 +452,10 @@
                 <div class="stat-card">
                     <div class="val" id="stat-time">—</div>
                     <div class="lbl">min</div>
+                </div>
+                <div class="stat-card">
+                    <div class="val" id="stat-co2">—</div>
+                    <div class="lbl">kg CO2</div>
                 </div>
             </div>
 
@@ -470,6 +492,18 @@ async function loadAirports() {
     const res  = await fetch('/api/airports');
     const data = await res.json();
     const codes = data.airports.sort();
+
+    // Show/hide sliders based on dropdown for "balanced"
+    document.getElementById('preference').addEventListener('change', function() {
+        document.getElementById('balancedSliders').style.display = (this.value === 'balanced') ? 'block' : 'none';
+    });
+
+    // Update slider text values
+    ['Dist', 'Price', 'Time', 'CO2'].forEach(id => {
+        document.getElementById(`slider${id}`).addEventListener('input', function() {
+            document.getElementById(`val${id}`).textContent = this.value;
+        });
+    });
 
     document.getElementById('airport-count').textContent = codes.length;
 
@@ -570,11 +604,12 @@ async function renderSegments(path) {
 }
 
 // ── Show summary ───────────────────────────────────────
-function showSummary(path, dist, price, time) {
+function showSummary(path, dist, price, time, co2) {
     document.getElementById('summary').style.display = 'block';
     document.getElementById('stat-dist').textContent  = dist  ? Math.round(dist)  : '—';
     document.getElementById('stat-price').textContent = price ? `$${Math.round(price)}` : '—';
     document.getElementById('stat-time').textContent  = time  ? Math.round(time)  : '—';
+    document.getElementById('stat-co2').textContent   = co2   ? Math.round(co2)   : '—'; 
     document.getElementById('routes-list').innerHTML  = '';
     renderPath(path);
     drawRoute(path);
@@ -654,25 +689,43 @@ document.getElementById('find-btn').addEventListener('click', async () => {
 
             status.className   = 'success';
             status.textContent = `${data.stops} layover(s)`;
-            showSummary(data.path, null, null, null);
+            
+            showSummary(data.path, null, null, null, null); 
+            
             document.getElementById('segments').innerHTML = '';
-
         } else {
-            const epMap = { distance: 'shortest', price: 'cheapest', time: 'fastest' };
+            const epMap = { 
+                distance: 'shortest', 
+                price: 'cheapest', 
+                time: 'fastest',
+                co2: 'greenest',
+                balanced: 'balanced'
+            };
             url  = `/api/${epMap[preference]}?start=${origin}&end=${destination}`;
+
+            // If it's the balanced route, append the slider values to the URL
+            if (preference === 'balanced') {
+                const w_dist = document.getElementById('sliderDist').value;
+                const w_price = document.getElementById('sliderPrice').value;
+                const w_time = document.getElementById('sliderTime').value;
+                const w_co2 = document.getElementById('sliderCO2').value;
+                url += `&w_dist=${w_dist}&w_price=${w_price}&w_time=${w_time}&w_co2=${w_co2}`;
+            }
             res  = await fetch(url);
             data = await res.json();
 
             if (!res.ok) throw new Error(data.error);
 
-            const dist  = data.total_distance || null;
-            const price = data.total_price    || null;
-            const time  = data.total_time     || null;
+            
+            const dist  = data.distance || null;
+            const price = data.price    || null;
+            const time  = data.time     || null;
+            const co2 = data.co2        || null;
             const total = dist ?? price ?? time;
 
             status.className   = 'success';
             status.textContent = `Total: ${total}`;
-            showSummary(data.path, dist, price, time);
+            showSummary(data.path, dist, price, time, co2);
             document.getElementById('segments').innerHTML = '';
         }
 
