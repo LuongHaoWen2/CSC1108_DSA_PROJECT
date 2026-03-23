@@ -536,7 +536,12 @@ async function loadAirports() {
             const text = airport.label || `${airport.name} (${airport.code})`;
             el.append(new Option(text, airport.code));
         });
-        el.select2({ placeholder: 'Type to search', width: '100%' });
+        // Add allowClear for avoid dropdown to match airline behavior
+        const config = { placeholder: 'Type to search', width: '100%' };
+        if (sel === '#avoid') {
+            config.allowClear = true;
+        }
+        el.select2(config);
     });
 }
 
