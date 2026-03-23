@@ -1,4 +1,4 @@
-def find_routes(graph, start, end, max_stops, avoid_airport=None, airline=None):
+def find_routes(graph, start, end, max_stops=None, avoid_airport=None, airline=None):
     """
     Iterative DFS to find all routes from start to end up to max_stops.
     graph: FlightGraph instance

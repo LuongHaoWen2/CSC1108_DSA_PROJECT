@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from algo import find_fewest_layovers, find_routes, find_lowest_path
+from algo import find_fewest_layovers, find_routes, find_lowest_path, find_lowest_path_astar
 # Assuming core/__init__.py allows this import:
 from core import Route 
 
@@ -301,6 +301,147 @@ def balanced_path():
 
     graph = get_graph()
     path, _ = find_lowest_path(graph, params["start"], params["end"], weight_type='balanced',
+                               weight_distance=wd, weight_price=wp,
+                               weight_time=wt, weight_co2=wc,
+                               airline=params["airline"])
+
+    route_obj = package_route(path, 'balanced', weight_distance=wd, weight_price=wp,
+                              weight_time=wt, weight_co2=wc, airline=params["airline"])
+    
+    if not route_obj:
+        return jsonify({"error": "No route found"}), 404
+    return jsonify({
+        "route": route_obj.to_dict(),
+        "summary": build_route_summary(
+            path,
+            "balanced",
+            weight_distance=wd,
+            weight_price=wp,
+            weight_time=wt,
+            weight_co2=wc,
+            airline=params["airline"],
+        ),
+    })
+
+# -------- A* Routes --------
+@api_bp.route('/api/astar-shortest', methods=['GET'])
+def astar_shortest_path():
+    params, err = get_common_filters()
+    if err:
+        return err
+
+    graph = get_graph()
+    path, _ = find_lowest_path_astar(
+        graph,
+        params["start"],
+        params["end"],
+        weight_type='distance',
+        airline=params["airline"],
+    )
+    
+    route_obj = package_route(path, 'distance', airline=params["airline"])
+    if not route_obj:
+        return jsonify({"error": "No route found"}), 404
+    return jsonify({
+        "route": route_obj.to_dict(),
+        "summary": build_route_summary(path, "distance", airline=params["airline"]),
+    })
+
+@api_bp.route('/api/astar-cheapest', methods=['GET'])
+def astar_cheapest_path():
+    params, err = get_common_filters()
+    if err:
+        return err
+
+    graph = get_graph()
+    path, _ = find_lowest_path_astar(
+        graph,
+        params["start"],
+        params["end"],
+        weight_type='price',
+        airline=params["airline"],
+    )
+    
+    route_obj = package_route(path, 'price', airline=params["airline"])
+    if not route_obj:
+        return jsonify({"error": "No route found"}), 404
+    return jsonify({
+        "route": route_obj.to_dict(),
+        "summary": build_route_summary(path, "price", airline=params["airline"]),
+    })
+
+@api_bp.route('/api/astar-fastest', methods=['GET'])
+def astar_fastest_path():
+    params, err = get_common_filters()
+    if err:
+        return err
+
+    graph = get_graph()
+    path, _ = find_lowest_path_astar(
+        graph,
+        params["start"],
+        params["end"],
+        weight_type='time',
+        airline=params["airline"],
+    )
+    
+    route_obj = package_route(path, 'time', airline=params["airline"])
+    if not route_obj:
+        return jsonify({"error": "No route found"}), 404
+    return jsonify({
+        "route": route_obj.to_dict(),
+        "summary": build_route_summary(path, "time", airline=params["airline"]),
+    })
+
+@api_bp.route('/api/astar-greenest', methods=['GET'])
+def astar_greenest_path():
+    """A* Optimized for CO2 Emissions"""
+    params, err = get_common_filters()
+    if err:
+        return err
+
+    graph = get_graph()
+    path, _ = find_lowest_path_astar(
+        graph,
+        params["start"],
+        params["end"],
+        weight_type='co2',
+        airline=params["airline"],
+    )
+    
+    route_obj = package_route(path, 'co2', airline=params["airline"])
+    if not route_obj:
+        return jsonify({"error": "No route found"}), 404
+    return jsonify({
+        "route": route_obj.to_dict(),
+        "summary": build_route_summary(path, "co2", airline=params["airline"]),
+    })
+
+@api_bp.route('/api/astar-balanced', methods=['GET'])
+def astar_balanced_path():
+    """A* Multi-Criteria Optimization"""
+    params, err = get_common_filters()
+    if err:
+        return err
+    
+    # Grab slider values from URL parameters
+    try:
+        w_dist = float(request.args.get('w_dist', 25))
+        w_price = float(request.args.get('w_price', 25))
+        w_time = float(request.args.get('w_time', 25))
+        w_co2 = float(request.args.get('w_co2', 25))
+    except ValueError:
+        return jsonify({"error": "Weights must be numbers"}), 400
+
+    # Normalization
+    total = w_dist + w_price + w_time + w_co2
+    if total == 0:
+        wd = wp = wt = wc = 0.25
+    else:
+        wd, wp, wt, wc = w_dist/total, w_price/total, w_time/total, w_co2/total
+
+    graph = get_graph()
+    path, _ = find_lowest_path_astar(graph, params["start"], params["end"], weight_type='balanced',
                                weight_distance=wd, weight_price=wp,
                                weight_time=wt, weight_co2=wc,
                                airline=params["airline"])

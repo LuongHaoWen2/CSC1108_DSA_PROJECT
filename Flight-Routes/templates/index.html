@@ -391,12 +391,17 @@
         <div class="field">
             <label>Route preference</label>
             <select id="preference">
-                <option value="distance">Shortest Distance</option>
-                <option value="price">Lowest Price</option>
-                <option value="time">Fastest Time</option>
-                <option value="co2">Lowest CO2</option>
-                <option value="balanced">Balanced Route</option>
-                <option value="fewest_hops">Fewest Layovers</option>
+                <option value="distance">Shortest Distance (Dijkstra)</option>
+                <option value="price">Lowest Price (Dijkstra)</option>
+                <option value="time">Fastest Time (Dijkstra)</option>
+                <option value="co2">Lowest CO2 (Dijkstra)</option>
+                <option value="balanced">Balanced Route (Dijkstra)</option>
+                <option value="astar_distance">Shortest Distance (A*)</option>
+                <option value="astar_price">Lowest Price (A*)</option>
+                <option value="astar_time">Fastest Time (A*)</option>
+                <option value="astar_co2">Lowest CO2 (A*)</option>
+                <option value="astar_balanced">Balanced Route (A*)</option>
+                <option value="fewest_hops">Fewest Layovers (BFS)</option>
                 <option value="dfs">All Routes (DFS)</option>
             </select>
         </div>
@@ -716,17 +721,35 @@ document.getElementById('find-btn').addEventListener('click', async () => {
             showSummary(data.summary);
             document.getElementById('routes-list').innerHTML = '';
         } else {
-            const epMap = { 
+            // Map preference to API endpoint
+            const dijkstraMap = { 
                 distance: 'shortest', 
                 price: 'cheapest', 
                 time: 'fastest',
                 co2: 'greenest',
                 balanced: 'balanced'
             };
-            url  = `/api/${epMap[preference]}?start=${origin}&end=${destination}${airlineParam}`;
+            
+            const astarMap = {
+                astar_distance: 'astar-shortest',
+                astar_price: 'astar-cheapest',
+                astar_time: 'astar-fastest',
+                astar_co2: 'astar-greenest',
+                astar_balanced: 'astar-balanced'
+            };
+            
+            // Determine which endpoint to use
+            let endpoint;
+            if (preference.startsWith('astar_')) {
+                endpoint = astarMap[preference];
+            } else {
+                endpoint = dijkstraMap[preference];
+            }
+            
+            url  = `/api/${endpoint}?start=${origin}&end=${destination}${airlineParam}`;
 
             // If it's the balanced route, append the slider values to the URL
-            if (preference === 'balanced') {
+            if (preference === 'balanced' || preference === 'astar_balanced') {
                 const w_dist = document.getElementById('sliderDist').value;
                 const w_price = document.getElementById('sliderPrice').value;
                 const w_time = document.getElementById('sliderTime').value;
