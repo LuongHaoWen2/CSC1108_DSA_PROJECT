@@ -4,7 +4,7 @@ from collections import deque
 def find_fewest_layovers(graph, start_code, end_code, avoid_airport=None, max_stops=None, airline=None):
     """
     Finds the route with the fewest connections using Breadth-First Search (BFS).
-    If max_stops is provided, paths that exceed the limit are pruned.
+    If max_stops is provided, paths that exceed the limit are ignored
     """
     # 1. Safety check
     if start_code not in graph.airports or end_code not in graph.airports:
@@ -22,8 +22,9 @@ def find_fewest_layovers(graph, start_code, end_code, avoid_airport=None, max_st
         # Pop from the FRONT of the line (left side of the deque)
         current_node, path = queue.popleft()
 
-        # Keep BFS consistent with DFS semantics: len(path)-1 is number of flights.
-        if max_stops is not None and len(path) - 1 > max_stops:
+        layovers = len(path) - 2  # Number of layovers is number of flights minus 1 (for the starting airport)
+        # Keep BFS consistent with DFS semantics: len(path)-2 is number of flights.
+        if max_stops is not None and layovers > max_stops:
             continue
 
         # Did we reach the destination?

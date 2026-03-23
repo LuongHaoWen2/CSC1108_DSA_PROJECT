@@ -13,20 +13,25 @@ def find_lowest_path(graph, start_code, end_code, weight_type='distance', **kwar
         return None, float('inf')
 
     selected_airline = kwargs.get('airline', None)
-
+    max_stops = kwargs.get('max_stops', float('inf'))
     pq = [(0, start_code, [start_code])]
-    min_weights = {code: float('inf') for code in graph.airports}
-    min_weights[start_code] = 0
+    min_stops = {code: float('inf') for code in graph.airports}
+    min_stops[start_code] = 0
 
     while pq:
         current_weight, current_node, path = heapq.heappop(pq)
 
+        # Check if we've exceeded the maximum number of stops
+        layovers = len(path) - 2
+
+        if layovers > max_stops:
+            continue
+        if layovers >= min_stops[current_node] and current_node != start_code:
+            continue
         if current_node == end_code:
             return path, current_weight
-
-        if current_weight > min_weights[current_node]:
-            continue
-
+        
+        min_stops[current_node] = layovers
         current_airport_obj = graph.airports[current_node]
 
         for neighbor, flights_list in current_airport_obj.connections.items():
@@ -77,10 +82,8 @@ def find_lowest_path(graph, start_code, end_code, weight_type='distance', **kwar
                         best_flight_weight = flight[weight_type]
 
             new_total_weight = current_weight + best_flight_weight
-
-            if new_total_weight < min_weights[neighbor]:
-                min_weights[neighbor] = new_total_weight
-                new_path = path + [neighbor]
-                heapq.heappush(pq, (new_total_weight, neighbor, new_path))
+            new_path = path + [neighbor]
+            
+            heapq.heappush(pq, (new_total_weight, neighbor, new_path))
 
     return None, float('inf')

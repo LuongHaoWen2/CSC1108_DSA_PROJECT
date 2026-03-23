@@ -4,7 +4,7 @@ import math
 def find_lowest_path_astar(graph, start_code, end_code, weight_type='distance', **kwargs):
     """
     Finds the route with the lowest total cost using A* Search.
-    If max_stops is provided, paths that exceed the limit are pruned.
+    If max_stops is provided, paths that exceed the limit are ignored.
     weight_type can be 'distance', 'price', 'time', 'co2', or 'balanced'.
     """
     valid_weights = ['distance', 'price', 'time', 'co2', 'balanced']
@@ -15,25 +15,33 @@ def find_lowest_path_astar(graph, start_code, end_code, weight_type='distance', 
         return None, float('inf')
     
     selected_airline = kwargs.get('airline', None)
+    max_stops = kwargs.get('max_stops', float('inf'))
     # Setup the Priority Queue and Visited Set
     # Store a tuple in the priority queue: (f_score, actual cost, current_airport (node), path_taken)
     # Cost in this case will be the weights of the flights taken so far (e.g. total distance, total price, etc.)
     pq = [(0, 0, start_code, [start_code])]
-    min_weights = {code: float('inf') for code in graph.airports}
-    min_weights[start_code] = 0
+    min_stops = {code: float('inf') for code in graph.airports}
+    min_stops[start_code] = 0
 
     while pq:
         f_score, current_weight, current_node, path = heapq.heappop(pq)
 
+        layovers = len(path) - 2
+
+        if layovers > max_stops:
+            continue
+        if layovers >= min_stops[current_node] and current_node != start_code:
+            continue
         if current_node == end_code:
             return path, current_weight
-        # This is to avoid any weights that is higher than the absolute minimum that we have found so far.
-        if current_weight > min_weights[current_node]:
-            continue
+        
+        # Update the minimum stops to reach this node
+        min_stops[current_node] = layovers
 
         current_airport_obj = graph.airports[current_node]
 
         for neighbor, flights_list in current_airport_obj.connections.items():
+            # Filter by Airline if Specified
             if selected_airline:
                 filtered_flights = []
                 for f in flights_list:
@@ -81,23 +89,20 @@ def find_lowest_path_astar(graph, start_code, end_code, weight_type='distance', 
                         best_flight_weight = flight[weight_type]
 
             new_total_weight = current_weight + best_flight_weight
-            # Edge Relaxation portion of Dijkstra's Algorithm
-            if new_total_weight < min_weights[neighbor]:
-                min_weights[neighbor] = new_total_weight
-                new_path = path + [neighbor]
+            new_path = path + [neighbor]
 
-                # For Heuristic Calculation
-                neighbor_obj = graph.airports[neighbor]
-                end_obj = graph.airports[end_code]
+            # For Heuristic Calculation
+            neighbor_obj = graph.airports[neighbor]
+            end_obj = graph.airports[end_code]
 
-                # Since the airport node itself has lat and lon separately, we combine them together called coordinates.
-                neighbor_coords = (neighbor_obj.latitude, neighbor_obj.longitude)
-                end_coords = (end_obj.latitude, end_obj.longitude)
-                
-                h_score = calculate_heuristic(neighbor_coords, end_coords, weight_type, **kwargs)
-                new_f_score = new_total_weight + h_score
-                
-                heapq.heappush(pq, (new_f_score, new_total_weight, neighbor, new_path))
+            # Since the airport node itself has lat and lon separately, we combine them together called coordinates.
+            neighbor_coords = (neighbor_obj.latitude, neighbor_obj.longitude)
+            end_coords = (end_obj.latitude, end_obj.longitude)
+            
+            h_score = calculate_heuristic(neighbor_coords, end_coords, weight_type, **kwargs)
+            new_f_score = new_total_weight + h_score
+            
+            heapq.heappush(pq, (new_f_score, new_total_weight, neighbor, new_path))
 
     return None, float('inf')
 

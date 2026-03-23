@@ -10,14 +10,14 @@ def find_routes(graph, start, end, max_stops=None, avoid_airport=None, airline=N
     while stack:
         current, path = stack.pop()
 
-
         # If reached the destination, save the path
         if current == end:
             routes.append(path)
             continue
 
-        # Stop if path exceeds max_stops
-        if len(path) - 1 >= max_stops:
+        # Stop if path exceeds max_stops (count layovers: intermediate stops)
+        layovers = len(path) - 2
+        if max_stops is not None and layovers >= max_stops:
             continue
 
         # Explore neighbors
