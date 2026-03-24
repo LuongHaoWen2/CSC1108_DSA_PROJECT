@@ -20,7 +20,8 @@ def get_common_filters():
     end = request.args.get('end', '').upper().strip()
     avoid_airport = request.args.get('avoid', '').upper().strip() or None
     airline = request.args.get('airline', '').strip() or None
-    
+    avoid_continent = request.args.get('avoid_continent', '').strip() or None
+
     if not start or not end:
         return None, (jsonify({"error": "start and end are required"}), 400)
 
@@ -37,6 +38,7 @@ def get_common_filters():
         "avoid_airport": avoid_airport,
         "airline": airline,
         "max_stops": max_stops,
+        "avoid_continent": avoid_continent
     }
 
     return filters, None
@@ -197,6 +199,8 @@ def shortest_path():
         weight_type='distance',
         airline=params["airline"],
         max_stops=params["max_stops"],
+        avoid_airport=params["avoid_airport"],
+        avoid_continent=params["avoid_continent"],
     )
     
     route_obj = package_route(path, 'distance', airline=params["airline"])
@@ -221,6 +225,8 @@ def cheapest_path():
         weight_type='price',
         airline=params["airline"],
         max_stops=params["max_stops"],
+        avoid_airport=params["avoid_airport"],
+        avoid_continent=params["avoid_continent"],
     )
     
     route_obj = package_route(path, 'price', airline=params["airline"])
@@ -245,6 +251,8 @@ def fastest_path():
         weight_type='time',
         airline=params["airline"],
         max_stops=params["max_stops"],
+        avoid_airport=params["avoid_airport"],
+        avoid_continent=params["avoid_continent"],
     )
     
     route_obj = package_route(path, 'time', airline=params["airline"])
@@ -270,6 +278,8 @@ def greenest_path():
         weight_type='co2',
         airline=params["airline"],
         max_stops=params["max_stops"],
+        avoid_airport=params["avoid_airport"],
+        avoid_continent=params["avoid_continent"],
     )
     
     route_obj = package_route(path, 'co2', airline=params["airline"])
@@ -307,7 +317,9 @@ def balanced_path():
     path, _ = find_lowest_path(graph, params["start"], params["end"], weight_type='balanced',
                                weight_distance=wd, weight_price=wp,
                                weight_time=wt, weight_co2=wc,
-                               airline=params["airline"], max_stops=params["max_stops"])
+                               airline=params["airline"], max_stops=params["max_stops"],
+                               avoid_airport=params["avoid_airport"],
+                               avoid_continent=params["avoid_continent"])
 
     route_obj = package_route(path, 'balanced', weight_distance=wd, weight_price=wp,
                               weight_time=wt, weight_co2=wc, airline=params["airline"])
@@ -342,6 +354,8 @@ def astar_shortest_path():
         weight_type='distance',
         airline=params["airline"],
         max_stops=params["max_stops"],
+        avoid_airport=params["avoid_airport"],
+        avoid_continent=params["avoid_continent"],
     )
     
     route_obj = package_route(path, 'distance', airline=params["airline"])
@@ -366,6 +380,8 @@ def astar_cheapest_path():
         weight_type='price',
         airline=params["airline"],
         max_stops=params["max_stops"],
+        avoid_airport=params["avoid_airport"],
+        avoid_continent=params["avoid_continent"],
     )
     
     route_obj = package_route(path, 'price', airline=params["airline"])
@@ -390,6 +406,8 @@ def astar_fastest_path():
         weight_type='time',
         airline=params["airline"],
         max_stops=params["max_stops"],
+        avoid_airport=params["avoid_airport"],
+        avoid_continent=params["avoid_continent"],
     )
     
     route_obj = package_route(path, 'time', airline=params["airline"])
@@ -415,6 +433,8 @@ def astar_greenest_path():
         weight_type='co2',
         airline=params["airline"],
         max_stops=params["max_stops"],
+        avoid_airport=params["avoid_airport"],
+        avoid_continent=params["avoid_continent"],
     )
     
     route_obj = package_route(path, 'co2', airline=params["airline"])
@@ -452,7 +472,9 @@ def astar_balanced_path():
     path, _ = find_lowest_path_astar(graph, params["start"], params["end"], weight_type='balanced',
                                weight_distance=wd, weight_price=wp,
                                weight_time=wt, weight_co2=wc,
-                               airline=params["airline"], max_stops=params["max_stops"])
+                               airline=params["airline"], max_stops=params["max_stops"],
+                               avoid_airport=params["avoid_airport"],
+                               avoid_continent=params["avoid_continent"])
 
     route_obj = package_route(path, 'balanced', weight_distance=wd, weight_price=wp,
                               weight_time=wt, weight_co2=wc, airline=params["airline"])
@@ -486,6 +508,7 @@ def fewest_layovers():
         params["start"],
         params["end"],
         avoid_airport=params["avoid_airport"],
+        avoid_continent=params["avoid_continent"],
         max_stops=params["max_stops"],
         airline=params["airline"],
     )
@@ -513,8 +536,9 @@ def all_routes():
         graph,
         params["start"],
         params["end"],
-        params["max_stops"],
+        max_stops=params["max_stops"],
         avoid_airport=params["avoid_airport"],
+        avoid_continent=params["avoid_continent"],
         airline=params["airline"],
     )
 

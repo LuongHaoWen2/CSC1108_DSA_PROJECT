@@ -8,9 +8,9 @@ class FlightGraph:
     def __init__(self):
         self.airports = {}
 
-    def add_airport(self, code, name, lat, lon, country_code=""):
+    def add_airport(self, code, name, lat, lon, continent, country_code=""):
         if code not in self.airports:
-            self.airports[code] = AirportNode(code, name, lat, lon, country_code)
+            self.airports[code] = AirportNode(code, name, lat, lon, continent, country_code)
 
     def add_flight(self, origin, destination, airline, distance, price, time, co2):
         if origin in self.airports and destination in self.airports:
@@ -36,7 +36,8 @@ def load_flight_data(graph, filepath):
             lon = float(info["longitude"])
             name = info.get("name", "Unknown Airport")
             country_code = info.get("country_code", "")
-            graph.add_airport(code, name, lat, lon, country_code)
+            continent = info.get("continent", "")
+            graph.add_airport(code, name, lat, lon, continent, country_code)
         except (ValueError, TypeError, KeyError):
             continue
 

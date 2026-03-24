@@ -1,7 +1,7 @@
 from collections import deque
 
 
-def find_fewest_layovers(graph, start_code, end_code, avoid_airport=None, max_stops=None, airline=None):
+def find_fewest_layovers(graph, start_code, end_code, **kwargs):
     """
     Finds the route with the fewest connections using Breadth-First Search (BFS).
     If max_stops is provided, paths that exceed the limit are ignored
@@ -9,6 +9,11 @@ def find_fewest_layovers(graph, start_code, end_code, avoid_airport=None, max_st
     # 1. Safety check
     if start_code not in graph.airports or end_code not in graph.airports:
         return None
+
+    max_stops = kwargs.get("max_stops")
+    avoid_airport = kwargs.get("avoid_airport")
+    airline = kwargs.get("airline")
+    avoid_continent = kwargs.get("avoid_continent")
 
     # 2. Setup the Queue and Visited Set
     # We store a tuple in the queue: (current_airport, path_taken)
@@ -39,7 +44,9 @@ def find_fewest_layovers(graph, start_code, end_code, avoid_airport=None, max_st
         for neighbor in current_airport_obj.connections:
             if avoid_airport and neighbor == avoid_airport:
                 continue  # avoid airport
-
+            if avoid_continent:
+                if graph.airports[neighbor].continent == avoid_continent:
+                    continue  # avoid continent
             if airline:
                 flights = current_airport_obj.connections.get(neighbor, [])
                 has_airline = False

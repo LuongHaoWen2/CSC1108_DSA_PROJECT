@@ -417,26 +417,48 @@
         </div>
 
         <div id="balancedSliders" style="display: none; background: #0d1526; border: 1px solid #1e2d40; padding: 12px; margin-bottom: 14px; border-radius: 6px;">
-            <p style="font-size: 11px; color: #00d4ff; margin-bottom: 8px; text-transform: uppercase; font-family: 'Space Mono', monospace;">Adjust Priorities</p>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <p style="font-size: 11px; color: #00d4ff; margin: 0; text-transform: uppercase; font-family: 'Space Mono', monospace;">Adjust Priorities</p>
+                <span id="totalWeight" style="font-size: 10px; color: #7c3aed; font-family: 'Space Mono', monospace;">Total: 100%</span>
+            </div>
             
-            <label style="font-size: 10px; color: #64748b;">Distance: <span id="valDist">25</span>%</label>
-            <input type="range" id="sliderDist" min="0" max="100" value="25" style="width: 100%; margin-bottom: 8px;">
+            <label style="font-size: 10px; color: #64748b; display: flex; justify-content: space-between; margin-bottom: 3px;">
+                <span>Distance</span>
+                <span id="valDist">25</span>%
+            </label>
+            <input type="range" id="sliderDist" min="0" max="100" value="25" style="width: 100%; margin-bottom: 10px; accent-color: #00d4ff;">
             
-            <label style="font-size: 10px; color: #64748b;">Price: <span id="valPrice">25</span>%</label>
-            <input type="range" id="sliderPrice" min="0" max="100" value="25" style="width: 100%; margin-bottom: 8px;">
+            <label style="font-size: 10px; color: #64748b; display: flex; justify-content: space-between; margin-bottom: 3px;">
+                <span>Price</span>
+                <span id="valPrice">25</span>%
+            </label>
+            <input type="range" id="sliderPrice" min="0" max="100" value="25" style="width: 100%; margin-bottom: 10px; accent-color: #f59e0b;">
             
-            <label style="font-size: 10px; color: #64748b;">Time: <span id="valTime">25</span>%</label>
-            <input type="range" id="sliderTime" min="0" max="100" value="25" style="width: 100%; margin-bottom: 8px;">
+            <label style="font-size: 10px; color: #64748b; display: flex; justify-content: space-between; margin-bottom: 3px;">
+                <span>Time</span>
+                <span id="valTime">25</span>%
+            </label>
+            <input type="range" id="sliderTime" min="0" max="100" value="25" style="width: 100%; margin-bottom: 10px; accent-color: #10b981;">
 
-            <label style="font-size: 10px; color: #64748b;">CO2: <span id="valCO2">25</span>%</label>
-            <input type="range" id="sliderCO2" min="0" max="100" value="25" style="width: 100%;">
+            <label style="font-size: 10px; color: #64748b; display: flex; justify-content: space-between; margin-bottom: 3px;">
+                <span>CO2 Emissions</span>
+                <span id="valCO2">25</span>%
+            </label>
+            <input type="range" id="sliderCO2" min="0" max="100" value="25" style="width: 100%; margin-bottom: 10px; accent-color: #ef4444;">
+            
+            <button id="resetSliders" style="width: 100%; padding: 6px; background: #1e2d40; border: 1px solid #2a3f5f; color: #64748b; border-radius: 4px; font-size: 10px; cursor: pointer; text-transform: uppercase; margin-top: 8px; transition: all 0.2s;">Reset to Balanced</button>
         </div>
 
         <div class="row-fields">
             <div class="field">
                 <label>Max stops (layovers)</label>
-                <input type="number" id="max_stops" value="3" min="1" max="3"/>
-                <small style="font-size: 9px; color: #64748b; margin-top: 2px; display: block;">(Max Stop capped at 3 does not include final destination)</small>
+                <select id="max_stops">
+                    <option value="">No max stop</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3" selected>3</option>
+                </select>
+                <small style="font-size: 9px; color: #64748b; margin-top: 2px; display: block;">(Does not include final destination)</small>
             </div>
             <div class="field">
                 <label>Avoid airport</label>
@@ -444,6 +466,18 @@
                     <option value="">None</option>
                 </select>
             </div>
+        </div>
+        <div class="field">
+            <label>Avoid continent</label>
+            <select id="avoid_continent">
+                <option value="">None</option>
+                <option value="North America">North America</option>
+                <option value="South America">South America</option>
+                <option value="Europe">Europe</option>
+                <option value="Africa">Africa</option>
+                <option value="Asia">Asia</option>
+                <option value="Oceania">Oceania</option>
+            </select>
         </div>
         <div class="field">
             <label>Airline (optional)</label>
@@ -496,13 +530,16 @@ const map = L.map('map-container', {
     zoom: 3,
     minZoom: 2,
     maxZoom: 10,
-    zoomControl: true
+    zoomControl: true,
+    noWrap: true,
+    maxBounds: [[-90, -180], [90, 180]]
 });
 
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     attribution: '© OpenStreetMap © CARTO',
     subdomains: 'abcd',
-    maxZoom: 10
+    maxZoom: 10,
+    noWrap: true
 }).addTo(map);
 
 let routeLayer   = null;
@@ -528,15 +565,84 @@ async function loadAirports() {
 
     // Show/hide sliders based on dropdown for "balanced"
     document.getElementById('preference').addEventListener('change', function() {
-        document.getElementById('balancedSliders').style.display = (this.value === 'balanced') ? 'block' : 'none';
+        document.getElementById('balancedSliders').style.display = (this.value === 'balanced' || this.value === 'astar_balanced') ? 'block' : 'none';
     });
 
-    // Update slider text values
-    ['Dist', 'Price', 'Time', 'CO2'].forEach(id => {
-        document.getElementById(`slider${id}`).addEventListener('input', function() {
-            document.getElementById(`val${id}`).textContent = this.value;
+    // ── Balanced Sliders Logic ──
+    const sliders = {
+        dist: document.getElementById('sliderDist'),
+        price: document.getElementById('sliderPrice'),
+        time: document.getElementById('sliderTime'),
+        co2: document.getElementById('sliderCO2')
+    };
+    
+    const displays = {
+        dist: document.getElementById('valDist'),
+        price: document.getElementById('valPrice'),
+        time: document.getElementById('valTime'),
+        co2: document.getElementById('valCO2')
+    };
+    
+    const sliderArray = [sliders.dist, sliders.price, sliders.time, sliders.co2];
+    const sliderKeys = ['dist', 'price', 'time', 'co2'];
+    
+    function updateDisplay() {
+        const total = sliderArray.reduce((sum, s) => sum + parseInt(s.value), 0);
+        document.getElementById('totalWeight').textContent = `Total: ${total}%`;
+        
+        sliderKeys.forEach(key => {
+            displays[key].textContent = sliders[key].value;
+        });
+    }
+    
+    function rebalanceSliders(changedSlider) {
+        const sliderValues = sliderArray.map(s => parseInt(s.value));
+        const changedIndex = sliderArray.indexOf(changedSlider);
+        const currentTotal = sliderValues.reduce((a, b) => a + b, 0);
+        
+        if (currentTotal === 100) {
+            updateDisplay();
+            return; // Already balanced
+        }
+        
+        // If total < 100, distribute excess to other sliders proportionally
+        // If total > 100, reduce other sliders proportionally
+        const difference = 100 - currentTotal;
+        
+        if (difference !== 0) {
+            const otherIndices = sliderKeys.map((_, i) => i).filter(i => i !== changedIndex);
+            const otherCount = otherIndices.length;
+            
+            if (otherCount > 0) {
+                const adjustPerSlider = Math.floor(difference / otherCount);
+                const remainder = difference % otherCount;
+                
+                otherIndices.forEach((idx, i) => {
+                    let newValue = Math.max(0, Math.min(100, sliderValues[idx] + adjustPerSlider + (i < remainder ? 1 : 0)));
+                    sliderArray[idx].value = newValue;
+                });
+            }
+        }
+        
+        updateDisplay();
+    }
+    
+    sliderArray.forEach(slider => {
+        slider.addEventListener('input', function() {
+            rebalanceSliders(this);
         });
     });
+    
+    // Reset button
+    document.getElementById('resetSliders').addEventListener('click', function() {
+        sliders.dist.value = 25;
+        sliders.price.value = 25;
+        sliders.time.value = 25;
+        sliders.co2.value = 25;
+        updateDisplay();
+    });
+    
+    updateDisplay();
 
     document.getElementById('airport-count').textContent = airports.length;
 
@@ -653,14 +759,29 @@ function showSummary(summary) {
 
 // ── Find route ─────────────────────────────────────────
 document.getElementById('find-btn').addEventListener('click', async () => {
+    // Continent name to code mapping
+    const continentCodeMap = {
+        'North America': 'NA',
+        'South America': 'SA',
+        'Europe': 'EU',
+        'Africa': 'AF',
+        'Asia': 'AS',
+        'Oceania': 'OC',
+        'Antarctica': 'AN'
+    };
+    
     const origin      = document.getElementById('origin').value;
     const destination = document.getElementById('destination').value;
     const preference  = document.getElementById('preference').value;
-    const maxStopsInput = document.getElementById('max_stops');
-    const normalizedMaxStops = Math.max(1, Math.min(3, parseInt(maxStopsInput.value || '3', 10)));
-    maxStopsInput.value = normalizedMaxStops;
-    const max_stops = normalizedMaxStops;
+    const maxStopsValue = document.getElementById('max_stops').value;
+    
+    // Handle max stops dropdown: empty = no limit, otherwise use selected number
+    const max_stops = maxStopsValue === '' ? 99 : parseInt(maxStopsValue, 10);
+    
     const avoid = document.getElementById('avoid').value;
+    const avoid_continent_name = document.getElementById('avoid_continent').value;
+    // Convert continent name to code
+    const avoid_continent = avoid_continent_name ? continentCodeMap[avoid_continent_name] : '';
     const airline = document.getElementById('airline').value;
     const airlineParam = airline ? `&airline=${encodeURIComponent(airline)}` : '';
     const status = document.getElementById('status');
@@ -685,9 +806,10 @@ document.getElementById('find-btn').addEventListener('click', async () => {
     try {
         let url, res, data;
         const avoidParam = avoid ? `&avoid=${avoid}` : '';
+        const avoidContinentParam = avoid_continent ? `&avoid_continent=${encodeURIComponent(avoid_continent)}` : '';
         
         if (preference === 'dfs') {
-            url  = `/api/all-routes?start=${origin}&end=${destination}&max_stops=${max_stops}${avoidParam}${airlineParam}`;
+            url  = `/api/all-routes?start=${origin}&end=${destination}&max_stops=${max_stops}${avoidParam}${avoidContinentParam}${airlineParam}`;
             res  = await fetch(url);
             data = await res.json();
 
@@ -725,7 +847,7 @@ document.getElementById('find-btn').addEventListener('click', async () => {
             });
 
         } else if (preference === 'fewest_hops') {
-            url  = `/api/fewest-layovers?start=${origin}&end=${destination}&max_stops=${max_stops}${avoidParam}${airlineParam}`;
+            url  = `/api/fewest-layovers?start=${origin}&end=${destination}&max_stops=${max_stops}${avoidParam}${avoidContinentParam}${airlineParam}`;
             res  = await fetch(url);
             data = await res.json();
 
@@ -762,7 +884,7 @@ document.getElementById('find-btn').addEventListener('click', async () => {
                 endpoint = dijkstraMap[preference];
             }
             
-            url  = `/api/${endpoint}?start=${origin}&end=${destination}&max_stops=${max_stops}${airlineParam}`;
+            url  = `/api/${endpoint}?start=${origin}&end=${destination}&max_stops=${max_stops}${avoidParam}${avoidContinentParam}${airlineParam}`;
 
             // If it's the balanced route, append the slider values to the URL
             if (preference === 'balanced' || preference === 'astar_balanced') {
