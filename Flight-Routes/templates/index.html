@@ -446,7 +446,7 @@
             </label>
             <input type="range" id="sliderCO2" min="0" max="100" value="25" style="width: 100%; margin-bottom: 10px; accent-color: #ef4444;">
             
-            <button id="resetSliders" style="width: 100%; padding: 6px; background: #1e2d40; border: 1px solid #2a3f5f; color: #64748b; border-radius: 4px; font-size: 10px; cursor: pointer; text-transform: uppercase; margin-top: 8px; transition: all 0.2s;">Reset to Balanced</button>
+            <button id="resetSliders" style="width: 100%; padding: 6px; background: #1e2d40; border: 1px solid #2a3f5f; color: #64748b; border-radius: 4px; font-size: 10px; cursor: pointer; text-transform: uppercase; margin-top: 8px; transition: all 0.2s;">Reset Sliders</button>
         </div>
 
         <div class="row-fields">
@@ -455,8 +455,8 @@
                 <select id="max_stops">
                     <option value="">No max stop</option>
                     <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3" selected>3</option>
+                    <option value="2" selected>2</option>
+                    <option value="3">3</option>
                 </select>
                 <small style="font-size: 9px; color: #64748b; margin-top: 2px; display: block;">(Does not include final destination)</small>
             </div>
@@ -595,41 +595,9 @@ async function loadAirports() {
         });
     }
     
-    function rebalanceSliders(changedSlider) {
-        const sliderValues = sliderArray.map(s => parseInt(s.value));
-        const changedIndex = sliderArray.indexOf(changedSlider);
-        const currentTotal = sliderValues.reduce((a, b) => a + b, 0);
-        
-        if (currentTotal === 100) {
-            updateDisplay();
-            return; // Already balanced
-        }
-        
-        // If total < 100, distribute excess to other sliders proportionally
-        // If total > 100, reduce other sliders proportionally
-        const difference = 100 - currentTotal;
-        
-        if (difference !== 0) {
-            const otherIndices = sliderKeys.map((_, i) => i).filter(i => i !== changedIndex);
-            const otherCount = otherIndices.length;
-            
-            if (otherCount > 0) {
-                const adjustPerSlider = Math.floor(difference / otherCount);
-                const remainder = difference % otherCount;
-                
-                otherIndices.forEach((idx, i) => {
-                    let newValue = Math.max(0, Math.min(100, sliderValues[idx] + adjustPerSlider + (i < remainder ? 1 : 0)));
-                    sliderArray[idx].value = newValue;
-                });
-            }
-        }
-        
-        updateDisplay();
-    }
-    
     sliderArray.forEach(slider => {
         slider.addEventListener('input', function() {
-            rebalanceSliders(this);
+            updateDisplay();
         });
     });
     
